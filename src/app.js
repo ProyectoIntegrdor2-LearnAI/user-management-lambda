@@ -1,14 +1,27 @@
-import express from "express";
-import morgan from "morgan";
-import cors from "cors";
-import authRoutes from "./view/auth.routes.js";
+import { PORT, HOSTNAME } from './config.js';
+import express from 'express';
+import router from './routers/route.js';
+import http from 'http';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import path from 'path';
+import morgan from 'morgan';
+
+
 
 const app = express();
 
-app.use(morgan("dev"));
+app.use(morgan('dev'));
+app.use(bodyParser.json({ limit: '100mb' }));
+app.use(bodyParser.urlencoded({ limit: '100mb', extended: true }));
 
-app.use(express.json());
 app.use(cors());
-app.use('/api/users/',authRoutes);
+app.use(router);
 
-export default app;
+app.use(express.static(path.resolve("public")));
+app.set("views", path.resolve("views"));
+app.set("view engine", "ejs");
+
+http.createServer(app).listen(PORT, HOSTNAME, () => {  
+    console.log(`Server running at http://${HOSTNAME}:${PORT}/`);
+});

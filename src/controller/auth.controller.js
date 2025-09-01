@@ -1,59 +1,85 @@
-import User from '../model/user.model.js'
+import UserModel  from "../model/user.model.js";
+import { JwtHelper } from "../utils/JWThelper.js";
 import bcrypt from 'bcrypt';
 
 export class authController {
 
     static async register(req, res){
-        const { email
-        ,username,
-        password } = req.body;
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-        username,
-        email, 
-        hashedPassword
-    })
-    await newUser.save();
-    console.log(newUser );
-    return res.status(201).json({ message: 'User created' });
-    }
-
-    static async login(req, res){
-
-        const { email,
-        password } = req.body;
-
-        
-
-        res.json("Login user");
-    
-    }
-
-    static async progress(req, res){
-
-        const { token } = req.body;
-        console.log(token);
-
         try {
-            
-            const user = await JwtHelper.verifyKey(token);
-            if (user) {
+            const {name,
+                id,
+                address,
+                email,
+                phone,
+                password,
+                typeUser} = req.body;
+            const hashed = await bcrypt.hash(password, 10);
 
-                //Aqui va el codigo para dar el progreso
-
+            if (await UserModel.isRegisterIndentify(id)) {
+                return res.status(200).json({ msg: 'Usuario ya registrado con esa identificación.' });
             }
-            else{
-                return res.status(401).json({ message: 'Invalid token' });
+
+            if (await UserModel.isRegisterEmail(email)) {
+                return res.status(200).json({ msg: 'Usuario ya registrado con ese correo.' });
             }
 
-        } catch (error) {
-            console.error(error);
+            if (await UserModel.register(name,id,address, email, phone,hashed,typeUser)) {
+                return res.status(200).json({ msg: 'Usuario registrado correctamente.' });
         }
-
-        res.json("Logout user");
-    
+        }catch (error) {
+            console.error('registerController error: ', error);
+            res.status(500).json({ msg: 'Error en el servidor' });
+            
+        }
     }
+        
+//TODO LOGIN NO FUNCIONA AUN
+    static async login(req, res){
+        try {
+            const { email,
+            password } = req.body;
+
+            if(await UserModel.isRegisterEmail(email)){
+                const user = await UserModel.getPass(email);
+                const match = user && await bcrypt.compare(password, user.password);
+
+                if(match){
+                    const token = JwtHelper.generateKey({ id: user.id, email: user.email, typeUser: user.typeUser });
+                    return res.status(200).json({ msg: 'Login exitoso', token });
+                }else{
+                    return res.status(200).json({ msg: 'Contraseña incorrecta' });
+                }
+        
+            }
+        } catch (error) {
+        console.error('loginController error: ', error);
+        res.status(500).json({ msg: 'Error en el servidor' });
+        }
+    }
+        
+    // static async progress(req, res){
+
+    //     const { token } = req.body;
+    //     console.log(token);
+
+    //     try {
+            
+    //         const user = await JwtHelper.verifyKey(token);
+    //         if (user) {
+
+    //             //Aqui va el codigo para dar el progreso
+
+    //         }
+    //         else{
+    //             return res.status(401).json({ message: 'Invalid token' });
+    //         }
+
+    //     } catch (error) {
+    //         console.error(error);
+    //     }
+
+    //     res.json("Logout user");
+    
+    // }
 
 }
