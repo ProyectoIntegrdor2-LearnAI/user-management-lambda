@@ -2,7 +2,7 @@ import UserModel  from "../model/user.model.js";
 import { JwtHelper } from "../utils/JWThelper.js";
 import bcrypt from 'bcrypt';
 
-export class authController {
+export default class authController {
 
     static async register(req, res){
         try {
@@ -36,20 +36,22 @@ export class authController {
 //TODO LOGIN NO FUNCIONA AUN
     static async login(req, res){
         try {
-            const { email,
-            password } = req.body;
+            const { email, password } = req.body;
 
             if(await UserModel.isRegisterEmail(email)){
-                const user = await UserModel.getPass(email);
-                const match = user && await bcrypt.compare(password, user.password);
+                const pass = await UserModel.getPass(email);
+                console.log("Resultado de getPass:", pass);
+                const match = pass && await bcrypt.compare(password, pass.password);
 
                 if(match){
-                    const token = JwtHelper.generateKey({ id: user.id, email: user.email, typeUser: user.typeUser });
+                    const token = JwtHelper.generateKey(email); // Genera el token con la info necesaria
                     return res.status(200).json({ msg: 'Login exitoso', token });
                 }else{
-                    return res.status(200).json({ msg: 'Contraseña incorrecta' });
+                    return res.status(401).json({ msg: 'Contraseña incorrecta' }); // Usa 401 para no autorizado
                 }
         
+            } else {
+                return res.status(404).json({ msg: 'Usuario no encontrado' }); // Usa 404 si el email no existe
             }
         } catch (error) {
         console.error('loginController error: ', error);

@@ -3,18 +3,20 @@ import jwt from "jsonwebtoken";
 
 export class JwtHelper {
 
-    static async generateKey(correo) {
+    static generateKey(email) {
         try {
-            const token = jwt.sign({ correo }, JWT_SECRET, {
-                expiresIn: '1h',
-            });
+            const token = jwt.sign(
+                {email}, 
+                JWT_SECRET, 
+                {expiresIn: '1h',}
+            );
             return token;
         } catch (error) {
             console.error('generateKey error: ', error);
         }
     }
 
-    static async verifyKey(token) {
+    static verifyKey(token) {
         try {
             const decoded = jwt.verify(token, JWT_SECRET);
             return decoded;
@@ -24,4 +26,16 @@ export class JwtHelper {
         }
     }
 
+    // static isTokenExpired(token) {
+    //     try {
+    //         const decoded = jwt.decode(token);
+    //         if (!decoded || !decoded.exp) return true;
+    //         const now = Math.floor(Date.now() / 1000);
+    //         return decoded.exp < now;
+    //     } catch (error) {
+    //         console.error('isTokenExpired error: ', error);
+    //         return true;
+    //     }
+    // }
+    
 }

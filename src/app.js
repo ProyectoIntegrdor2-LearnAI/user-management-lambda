@@ -1,6 +1,6 @@
 import { PORT, HOSTNAME } from './config.js';
 import express from 'express';
-import router from './routers/route.js';
+import router from './view/auth.routes.js';
 import http from 'http';
 import bodyParser from 'body-parser';
 import cors from 'cors';
