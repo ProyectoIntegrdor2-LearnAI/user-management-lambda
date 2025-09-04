@@ -53,7 +53,7 @@ export default class UserModel {
             const selectUsuario = `
             SELECT * FROM usuario WHERE email = $1; 
             `;
-            const [rows] = await pool.query(selectUsuario, [email]);
+            const {rows} = await pool.query(selectUsuario, [email]);
             return rows[0]; 
         } catch (error) {
             console.error('loginModel error: ', error);
@@ -70,12 +70,12 @@ export default class UserModel {
             return pass.rows[0];
         } catch (error) {
             console.error('getPass error: ', error);
-
+            return null
         }
     }
     static async getId(email) {
         try {
-            const [rows] = await pool.query(
+            const {rows} = await pool.query(
                 'SELECT id FROM usuario WHERE email = $1',
                 [email]
             );

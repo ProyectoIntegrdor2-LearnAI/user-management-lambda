@@ -4,7 +4,7 @@ config();
 
 export const PORT = process.env.PORT || 3000;
 export const HOSTNAME = process.env.HOSTNAME || 'localhost';
-export const JWT_SECRET = process.env.JWT_SECRET //|| "claveSuperSegura";
+export const JWT_SECRET = process.env.JWT_SECRET;
 
 
 

@@ -4,17 +4,19 @@ import jwt from "jsonwebtoken";
 export class JwtHelper {
 
     static generateKey(email) {
-        try {
-            const token = jwt.sign(
-                {email}, 
-                JWT_SECRET, 
-                {expiresIn: '1h',}
-            );
-            return token;
-        } catch (error) {
-            console.error('generateKey error: ', error);
-        }
+    try {
+        const token = jwt.sign(
+            { email }, 
+            JWT_SECRET, 
+            { expiresIn: '1h' }
+        );
+        return token;
+    } catch (error) {
+        console.error('generateKey error: ', error);
+        return null;
     }
+}
+
 
     static verifyKey(token) {
         try {
