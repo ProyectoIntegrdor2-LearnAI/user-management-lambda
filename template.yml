@@ -15,9 +15,6 @@ Parameters:
   CorsOrigin:
     Type: String
     Default: "*"
-  LambdaExecutionRoleArn:
-    Type: String
-    Description: ARN of an existing IAM role for the Lambda function
 
 Globals:
   Function:
@@ -43,7 +40,9 @@ Resources:
     Properties:
       FunctionName: !Sub learnia-user-management-${Environment}
       Description: User Management MVP
-      Role: !Ref LambdaExecutionRoleArn
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        # Add additional permissions here if the Lambda needs them
       Events:
         Register:
           Type: Api
