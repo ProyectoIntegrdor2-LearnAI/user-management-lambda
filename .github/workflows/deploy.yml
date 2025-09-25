@@ -104,6 +104,7 @@ jobs:
           CORS_ORIGIN_DEV: ${{ secrets.CORS_ORIGIN_DEV || '*' }}
           CORS_ORIGIN_STAGING: ${{ secrets.CORS_ORIGIN_STAGING || '*' }}
           CORS_ORIGIN_PROD: ${{ secrets.CORS_ORIGIN_PROD }}
+          LAMBDA_ROLE_ARN: ${{ secrets.LAMBDA_ROLE_ARN }}
         run: |
           ENV="${{ github.event.inputs.environment || 'dev' }}"
           STACK_NAME="learnia-user-management-${ENV}"
@@ -140,6 +141,11 @@ jobs:
             echo "ERROR: JWT_SECRET for ${ENV} is not set in secrets"
             exit 1
           fi
+
+          if [ -z "${LAMBDA_ROLE_ARN}" ]; then
+            echo "ERROR: LAMBDA_ROLE_ARN secret is required"
+            exit 1
+          fi
           
           echo "Deploying with parameters:"
           echo "  Environment: ${ENV}"
@@ -158,7 +164,8 @@ jobs:
               Environment="${ENV}" \
               DatabaseUrl="${DATABASE_URL_FINAL}" \
               JWTSecret="${JWT_SECRET_FINAL}" \
-              CorsOrigin="${CORS_ORIGIN}"
+              CorsOrigin="${CORS_ORIGIN}" \
+              LambdaExecutionRoleArn="${LAMBDA_ROLE_ARN}"
 
       - name: Get deployment outputs
         id: outputs
