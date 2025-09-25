@@ -5,7 +5,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import { createAuthRoutes, createUserRoutes } from './web/routes/index.js';
+import { createAuthRoutes, createUserRoutes } from './routes/index.js';
 
 export class ExpressApplicationFactory {
   constructor(diContainer) {
@@ -61,8 +61,8 @@ export class ExpressApplicationFactory {
 
       try {
         // Check database connection
-        const dbConnection = this.diContainer.get('dbConnection');
-        await dbConnection.query('SELECT 1');
+  const dbPool = this.diContainer.get('dbPool');
+  await dbPool.query('SELECT 1');
         healthcheck.database = 'connected';
       } catch (error) {
         healthcheck.database = 'disconnected';

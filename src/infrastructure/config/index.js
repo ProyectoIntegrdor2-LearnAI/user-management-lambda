@@ -54,21 +54,26 @@ export const config = {
  * Validates required environment variables
  */
 export function validateConfig() {
-  const requiredEnvVars = [
-    'JWT_SECRET',
+  const requiredDbEnvVars = [
     'DB_HOST',
+    'DB_PORT',
     'DB_NAME',
     'DB_USER',
     'DB_PASSWORD'
   ];
 
-  const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
+  const hasDatabaseUrl = Boolean(process.env.DATABASE_URL);
+  const missingDbVars = requiredDbEnvVars.filter(varName => !process.env[varName]);
 
-  if (missingVars.length > 0) {
+  if (!hasDatabaseUrl && missingDbVars.length > 0) {
     throw new Error(
-      `Missing required environment variables: ${missingVars.join(', ')}\n` +
-      'Please check your .env file or environment configuration.'
+      `Missing required environment variables: ${missingDbVars.join(', ')} ` +
+      '(or set DATABASE_URL).'
     );
+  }
+
+  if (!process.env.JWT_SECRET) {
+    throw new Error('Missing required environment variable: JWT_SECRET');
   }
 
   console.log('✅ Configuration validation passed');

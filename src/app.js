@@ -44,6 +44,39 @@ async function initializeApplication() {
 export const lambdaHandler = async (event, context) => {
   try {
     console.log('Lambda Event:', JSON.stringify(event, null, 2));
+
+    const rawPath = event?.rawPath || event?.path || '/';
+    let normalizedPath = rawPath || '/';
+    if (normalizedPath.length > 1) {
+      normalizedPath = normalizedPath.replace(/\/+$/, '');
+    }
+    if (normalizedPath === '') {
+      normalizedPath = '/';
+    }
+    const headers = {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*'
+    };
+
+    if (normalizedPath === '/health') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({ ok: true })
+      };
+    }
+
+    if (normalizedPath === '/info') {
+      return {
+        statusCode: 200,
+        headers,
+        body: JSON.stringify({
+          name: 'learnia-user-management',
+          env: process.env.NODE_ENV || 'development',
+          ts: new Date().toISOString()
+        })
+      };
+    }
     
     // Initialize app if not already initialized
     if (!diContainer) {
@@ -68,6 +101,10 @@ export const lambdaHandler = async (event, context) => {
     console.error('Lambda execution error:', error);
     return {
       statusCode: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*'
+      },
       body: JSON.stringify({
         success: false,
         message: 'Internal server error'
