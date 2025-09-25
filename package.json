@@ -1,0 +1,42 @@
+{
+  "name": "learnia-user-management-mvp",
+  "version": "1.0.0",
+  "description": "User Management Lambda MVP for LearnIA platform",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "jest",
+    "db:setup": "node scripts/setup-database.js setup",
+    "db:test": "node scripts/setup-database.js test",
+    "db:admin": "node scripts/setup-database.js admin",
+    "health": "node scripts/setup-database.js health"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "aws-serverless-express": "^3.4.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.2",
+    "jest": "^29.7.0",
+    "supertest": "^6.3.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "learnia",
+    "user-management", 
+    "mvp",
+    "lambda",
+    "aws"
+  ],
+  "author": "LearnIA Team",
+  "license": "MIT"
+}

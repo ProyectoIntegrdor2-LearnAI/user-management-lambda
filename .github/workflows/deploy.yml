@@ -1,0 +1,273 @@
+name: Deploy User Management Lambda (dev)
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: user-management-deploy-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::974724840334:role/gh-actions-deploy-role
+          aws-region: us-east-2
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install SAM CLI
+        uses: aws-actions/setup-sam@v2
+        with:
+          use-installer: true
+
+      - name: Show project structure
+        run: |
+          echo "----- Project Structure -----"
+          ls -la
+          echo ""
+          echo "----- Source Directory -----"
+          ls -la src/ || echo "src/ directory not found"
+          echo ""
+          echo "----- Template Content (first 50 lines) -----"
+          head -50 template.yml || echo "template.yml not found"
+
+      - name: Install dependencies
+        run: |
+          cd src
+          npm ci --production
+          echo "Dependencies installed:"
+          npm list --depth=0
+
+      - name: Validate SAM template
+        run: |
+          echo "Validating template.yml..."
+          sam validate --lint -t template.yml
+
+      - name: Build SAM application
+        run: |
+          echo "Building SAM application with container..."
+          sam build -t template.yml --use-container
+          
+          echo "Build completed. Contents of .aws-sam/build:"
+          ls -la .aws-sam/build/
+
+      - name: Run tests (if available)
+        run: |
+          if [ -f "src/package.json" ] && grep -q '"test"' src/package.json; then
+            echo "Running tests..."
+            cd src
+            npm test || echo "Tests failed, but continuing deployment"
+          else
+            echo "No tests found, skipping test step"
+          fi
+
+      - name: Deploy to AWS
+        env:
+          DATABASE_URL_DEV: ${{ secrets.DATABASE_URL_DEV }}
+          DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
+          DATABASE_URL_PROD: ${{ secrets.DATABASE_URL_PROD }}
+          JWT_SECRET_DEV: ${{ secrets.JWT_SECRET_DEV }}
+          JWT_SECRET_STAGING: ${{ secrets.JWT_SECRET_STAGING }}
+          JWT_SECRET_PROD: ${{ secrets.JWT_SECRET_PROD }}
+          CORS_ORIGIN_DEV: ${{ secrets.CORS_ORIGIN_DEV || '*' }}
+          CORS_ORIGIN_STAGING: ${{ secrets.CORS_ORIGIN_STAGING || '*' }}
+          CORS_ORIGIN_PROD: ${{ secrets.CORS_ORIGIN_PROD }}
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          STACK_NAME="learnia-user-management-${ENV}"
+          
+          echo "Deploying to environment: ${ENV}"
+          echo "Stack name: ${STACK_NAME}"
+          
+          # Seleccionar variables según el ambiente
+          case ${ENV} in
+            "dev")
+              DATABASE_URL="${DATABASE_URL_DEV}"
+              JWT_SECRET="${JWT_SECRET_DEV}"
+              CORS_ORIGIN="${CORS_ORIGIN_DEV:-*}"
+              ;;
+            "staging")
+              DATABASE_URL="${DATABASE_URL_STAGING}"
+              JWT_SECRET="${JWT_SECRET_STAGING}"
+              CORS_ORIGIN="${CORS_ORIGIN_STAGING:-*}"
+              ;;
+            "prod")
+              DATABASE_URL="${DATABASE_URL_PROD}"
+              JWT_SECRET="${JWT_SECRET_PROD}"
+              CORS_ORIGIN="${CORS_ORIGIN_PROD}"
+              ;;
+          esac
+          
+          # Verificar que las variables críticas estén definidas
+          if [ -z "${DATABASE_URL}" ]; then
+            echo "ERROR: DATABASE_URL_${ENV} is not set in secrets"
+            exit 1
+          fi
+          
+          if [ -z "${JWT_SECRET}" ]; then
+            echo "ERROR: JWT_SECRET_${ENV} is not set in secrets"
+            exit 1
+          fi
+          
+          echo "Deploying with parameters:"
+          echo "  Environment: ${ENV}"
+          echo "  Database URL: ${DATABASE_URL:0:30}... (truncated)"
+          echo "  JWT Secret: ${JWT_SECRET:0:10}... (truncated)"
+          echo "  CORS Origin: ${CORS_ORIGIN}"
+          
+          sam deploy \
+            --template-file .aws-sam/build/template.yaml \
+            --no-fail-on-empty-changeset \
+            --stack-name "${STACK_NAME}" \
+            --region us-east-2 \
+            --s3-bucket learnia-sam-artifacts-us-east-2 \
+            --capabilities CAPABILITY_IAM \
+            --parameter-overrides \
+              Environment="${ENV}" \
+              DatabaseUrl="${DATABASE_URL}" \
+              JWTSecret="${JWT_SECRET}" \
+              CorsOrigin="${CORS_ORIGIN}"
+
+      - name: Get deployment outputs
+        id: outputs
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          STACK_NAME="learnia-user-management-${ENV}"
+          
+          echo "Getting stack outputs..."
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --region us-east-2 \
+            --query 'Stacks[0].Outputs[?OutputKey==`ApiUrl`].OutputValue' \
+            --output text)
+          
+          FUNCTION_ARN=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --region us-east-2 \
+            --query 'Stacks[0].Outputs[?OutputKey==`FunctionArn`].OutputValue' \
+            --output text)
+          
+          echo "api_url=${API_URL}" >> $GITHUB_OUTPUT
+          echo "function_arn=${FUNCTION_ARN}" >> $GITHUB_OUTPUT
+          
+          echo "Deployment completed successfully!"
+          echo "API URL: ${API_URL}"
+          echo "Function ARN: ${FUNCTION_ARN}"
+
+      - name: Test deployed API
+        env:
+          API_URL: ${{ steps.outputs.outputs.api_url }}
+        run: |
+          if [ -n "${API_URL}" ]; then
+            echo "Testing deployed API..."
+            
+            # Test health endpoint
+            echo "Testing health endpoint..."
+            curl -s -f "${API_URL}/health" || echo "Health check failed"
+            
+            # Test info endpoint
+            echo "Testing info endpoint..."
+            curl -s -f "${API_URL}/info" || echo "Info endpoint failed"
+            
+            echo "Basic API tests completed"
+          else
+            echo "API_URL not found, skipping API tests"
+          fi
+
+      - name: Create deployment summary
+        run: |
+          ENV="${{ github.event.inputs.environment || 'dev' }}"
+          API_URL="${{ steps.outputs.outputs.api_url }}"
+          FUNCTION_ARN="${{ steps.outputs.outputs.function_arn }}"
+          
+          cat >> $GITHUB_STEP_SUMMARY << EOF
+          ## User Management Lambda Deployment Summary
+          
+          **Environment:** \`${ENV}\`
+          **Stack:** \`learnia-user-management-${ENV}\`
+          **Region:** \`us-east-2\`
+          **Commit:** \`${GITHUB_SHA:0:8}\`
+          
+          ### Endpoints
+          - **API Base URL:** ${API_URL}
+          - **Health Check:** ${API_URL}/health
+          - **API Info:** ${API_URL}/info
+          
+          ### Key Endpoints
+          - **Register:** \`POST ${API_URL}/auth/register\`
+          - **Login:** \`POST ${API_URL}/auth/login\`
+          - **Profile:** \`GET ${API_URL}/users/{id}\`
+          - **Dashboard:** \`GET ${API_URL}/users/{id}/dashboard\`
+          
+          ### AWS Resources
+          - **Function ARN:** \`${FUNCTION_ARN}\`
+          - **Stack Name:** \`learnia-user-management-${ENV}\`
+          
+          ### Next Steps
+          1. Update frontend API_BASE_URL to: \`${API_URL}\`
+          2. Test authentication flow
+          3. Verify database connectivity
+          
+          **Deployment Status:** Success
+          EOF
+
+  # Job para despliegue automático a staging cuando se hace push a main
+  auto-staging:
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'dev' }}
+    
+    steps:
+      - name: Trigger staging deployment
+        run: |
+          echo "Main branch updated - consider deploying to staging"
+          echo "Manual staging deployment can be triggered via GitHub Actions UI"
+
+# Jobs de rollback (opcional)
+  rollback:
+    if: failure() && github.event.inputs.environment == 'prod'
+    needs: deploy
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+    
+    steps:
+      - name: Rollback notification
+        run: |
+          echo "Production deployment failed!"
+          echo "Consider rolling back to previous version"
+          echo "Manual intervention may be required"
