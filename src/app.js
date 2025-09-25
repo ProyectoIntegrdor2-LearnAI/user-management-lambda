@@ -95,18 +95,26 @@ export const lambdaHandler = async (event, context) => {
       
       // Use serverless-express for Lambda
       const serverlessExpress = (await import('aws-serverless-express')).default;
-      const server = serverlessExpress.createServer(app);
-      
-      return serverlessExpress.proxy(server, event, context);
+      if (!globalThis.__server) {
+        globalThis.__server = serverlessExpress.createServer(app);
+      }
+
+      return serverlessExpress
+        .proxy(globalThis.__server, event, context, 'PROMISE')
+        .promise;
     }
     
     // Handle subsequent requests...
     const serverlessExpress = (await import('aws-serverless-express')).default;
-    const applicationFactory = new ExpressApplicationFactory(diContainer);
-    const app = applicationFactory.create();
-    const server = serverlessExpress.createServer(app);
-    
-    return serverlessExpress.proxy(server, event, context);
+    if (!globalThis.__server) {
+      const applicationFactory = new ExpressApplicationFactory(diContainer);
+      const app = applicationFactory.create();
+      globalThis.__server = serverlessExpress.createServer(app);
+    }
+
+    return serverlessExpress
+      .proxy(globalThis.__server, event, context, 'PROMISE')
+      .promise;
     
   } catch (error) {
     console.error('Lambda execution error:', error);
