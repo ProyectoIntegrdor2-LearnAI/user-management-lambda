@@ -67,7 +67,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd src
           npm ci --production
           echo "Dependencies installed:"
           npm list --depth=0
@@ -87,9 +86,8 @@ jobs:
 
       - name: Run tests (if available)
         run: |
-          if [ -f "src/package.json" ] && grep -q '"test"' src/package.json; then
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
             echo "Running tests..."
-            cd src
             npm test || echo "Tests failed, but continuing deployment"
           else
             echo "No tests found, skipping test step"
