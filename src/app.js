@@ -42,21 +42,32 @@ async function initializeApplication() {
  * Lambda Handler for AWS Lambda deployment
  */
 export const lambdaHandler = async (event, context) => {
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
+    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+  };
+
   try {
     console.log('Lambda Event:', JSON.stringify(event, null, 2));
 
-    const rawPath = event?.rawPath || event?.path || '/';
-    let normalizedPath = rawPath || '/';
+    const path = event?.rawPath || event?.path || '/';
+    let normalizedPath = path || '/';
     if (normalizedPath.length > 1) {
       normalizedPath = normalizedPath.replace(/\/+$/, '');
     }
     if (normalizedPath === '') {
       normalizedPath = '/';
     }
-    const headers = {
-      'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*'
-    };
+
+    if (event?.requestContext?.http?.method === 'OPTIONS' || event?.httpMethod === 'OPTIONS') {
+      return {
+        statusCode: 204,
+        headers,
+        body: ''
+      };
+    }
 
     if (normalizedPath === '/health') {
       return {
@@ -83,14 +94,14 @@ export const lambdaHandler = async (event, context) => {
       const app = await initializeApplication();
       
       // Use serverless-express for Lambda
-      const serverlessExpress = await import('aws-serverless-express');
+      const serverlessExpress = (await import('aws-serverless-express')).default;
       const server = serverlessExpress.createServer(app);
       
       return serverlessExpress.proxy(server, event, context);
     }
     
     // Handle subsequent requests...
-    const serverlessExpress = await import('aws-serverless-express');
+    const serverlessExpress = (await import('aws-serverless-express')).default;
     const applicationFactory = new ExpressApplicationFactory(diContainer);
     const app = applicationFactory.create();
     const server = serverlessExpress.createServer(app);
@@ -101,10 +112,7 @@ export const lambdaHandler = async (event, context) => {
     console.error('Lambda execution error:', error);
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*'
-      },
+      headers,
       body: JSON.stringify({
         success: false,
         message: 'Internal server error'

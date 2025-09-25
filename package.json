@@ -1,5 +1,6 @@
 {
   "name": "learnia-user-management-mvp",
+  "type": "module",
   "version": "1.0.0",
   "description": "User Management Lambda MVP for LearnIA platform",
   "main": "app.js",
