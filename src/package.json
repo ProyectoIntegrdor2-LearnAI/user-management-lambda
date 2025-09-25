@@ -1,0 +1,17 @@
+{
+  "name": "learnia-user-management-lambda",
+  "version": "1.0.0",
+  "description": "Lambda package for LearnIA user management API",
+  "main": "app.js",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "uuid": "^9.0.1",
+    "aws-serverless-express": "^3.4.0"
+  }
+}
