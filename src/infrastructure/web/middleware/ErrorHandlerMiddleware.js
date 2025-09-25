@@ -11,6 +11,14 @@ export class ErrorHandlerMiddleware {
   static handle() {
     return (err, req, res, next) => {
       console.error('Error capturado:', err);
+
+      if (err.name === 'ValidationError') {
+        return res.status(400).json({
+          success: false,
+          message: err.message,
+          missing: err.details || []
+        });
+      }
       
       // Error de validación de JWT
       if (err.name === 'JsonWebTokenError') {
@@ -28,11 +36,6 @@ export class ErrorHandlerMiddleware {
         });
       }
       
-      // Errores de negocio personalizados
-      if (err.code) {
-        return ErrorHandlerMiddleware._handleBusinessError(err, res);
-      }
-      
       // Error de base de datos - constraint único
       if (err.code === '23505') {
         return res.status(409).json({
@@ -47,6 +50,11 @@ export class ErrorHandlerMiddleware {
           success: false,
           message: 'Error de integridad referencial'
         });
+      }
+
+      // Errores de negocio personalizados
+      if (err.code) {
+        return ErrorHandlerMiddleware._handleBusinessError(err, res);
       }
       
       // Error genérico

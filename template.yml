@@ -15,6 +15,12 @@ Parameters:
   CorsOrigin:
     Type: String
     Default: "*"
+  VpcSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets privados donde correrá la Lambda
+  VpcSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security Groups para acceso a la base de datos
 
 Globals:
   Function:
@@ -42,7 +48,10 @@ Resources:
       Description: User Management MVP
       Policies:
         - AWSLambdaBasicExecutionRole
-        # Add additional permissions here if the Lambda needs them
+        - AWSLambdaVPCAccessExecutionRole
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
       Events:
         Register:
           Type: Api

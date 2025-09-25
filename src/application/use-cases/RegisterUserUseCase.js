@@ -5,6 +5,14 @@
 
 import { User } from '../../domain/entities/User.js';
 
+class ValidationError extends Error {
+  constructor(message, details = []) {
+    super(message);
+    this.name = 'ValidationError';
+    this.details = details;
+  }
+}
+
 export class RegisterUserUseCase {
   constructor(userRepository, passwordService) {
     this.userRepository = userRepository;
@@ -12,11 +20,14 @@ export class RegisterUserUseCase {
   }
 
   async execute({ identification, name, email, phone, password, address }) {
-    // Validaciones de negocio
-    if (!identification || !name || !email || !password) {
-      throw new Error('MISSING_REQUIRED_FIELDS', {
-        message: 'Campos obligatorios: identification, name, email, password'
-      });
+    const missing = [];
+    if (!identification) missing.push('identification');
+    if (!name) missing.push('name');
+    if (!email) missing.push('email');
+    if (!password) missing.push('password');
+
+    if (missing.length) {
+      throw new ValidationError('MISSING_REQUIRED_FIELDS', missing);
     }
 
     if (!User.validateEmail(email)) {
