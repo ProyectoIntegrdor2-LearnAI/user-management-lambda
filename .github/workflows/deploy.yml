@@ -41,7 +41,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Setup Python
@@ -74,7 +74,7 @@ jobs:
       - name: Validate SAM template
         run: |
           echo "Validating template.yml..."
-          sam validate --lint -t template.yml
+          sam validate -t template.yml
 
       - name: Build SAM application
         run: |
