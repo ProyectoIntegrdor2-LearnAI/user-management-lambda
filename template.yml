@@ -23,8 +23,8 @@ Globals:
     MemorySize: 512
     Architectures:
       - x86_64
-    CodeUri: src/
-    Handler: app.lambdaHandler
+    CodeUri: .
+    Handler: src/app.lambdaHandler
     Environment:
       Variables:
         NODE_ENV: !Ref Environment
