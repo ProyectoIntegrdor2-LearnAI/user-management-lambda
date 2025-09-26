@@ -3,6 +3,8 @@
  * Middleware para validación de datos de entrada
  */
 
+import { ValidationError } from '../../../shared/errors/ValidationError.js';
+
 export class ValidationMiddleware {
   
   /**
@@ -29,32 +31,42 @@ export class ValidationMiddleware {
    */
   static validateRegistration() {
     return (req, res, next) => {
-      const { name, email, password } = req.body;
-      const errors = [];
+      const { name, email, password, identification, phone, address, type_user } = req.body;
+      const missing = [];
 
-      // Validar nombre
       if (!name || name.trim().length < 2) {
-        errors.push('El nombre debe tener al menos 2 caracteres');
+        missing.push('name');
       }
 
-      // Validar email
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!email || !emailRegex.test(email)) {
-        errors.push('El email debe tener un formato válido');
+        missing.push('email');
       }
 
-      // Validar contraseña
       if (!password || password.length < 6) {
-        errors.push('La contraseña debe tener al menos 6 caracteres');
+        missing.push('password');
       }
 
-      if (errors.length > 0) {
-        return res.status(400).json({
-          success: false,
-          message: 'Datos de registro inválidos',
-          errors
-        });
+      if (!identification || identification.toString().trim().length === 0) {
+        missing.push('identification');
       }
+
+      if (missing.length > 0) {
+        return next(new ValidationError('MISSING_REQUIRED_FIELDS', missing));
+      }
+
+      req.validated = {
+        ...(req.validated || {}),
+        body: {
+          name: name.trim(),
+          email: email.trim(),
+          password,
+          identification: identification.toString().trim(),
+          phone: phone ?? null,
+          address: address ?? null,
+          type_user: type_user ?? 'user'
+        }
+      };
 
       next();
     };
