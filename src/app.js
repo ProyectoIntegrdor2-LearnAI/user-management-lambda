@@ -7,6 +7,7 @@ import 'dotenv/config';
 import { config, validateConfig } from './infrastructure/config/index.js';
 import { DIContainer } from './infrastructure/DIContainer.js';
 import { ExpressApplicationFactory } from './infrastructure/web/ExpressApplicationFactory.js';
+import pool from './infrastructure/database/connection.js';
 
 // Global DI Container instance
 let diContainer;
@@ -34,14 +35,63 @@ async function initializeApplication() {
     
   } catch (error) {
     console.error('❌ Failed to initialize application:', error);
-    process.exit(1);
+    throw error;
   }
+}
+
+let cachedProxy;
+let cachedServer;
+let cachedServerlessExpress;
+
+async function getServerlessProxy() {
+  if (!cachedProxy) {
+    const app = await initializeApplication();
+    cachedServerlessExpress = (await import('aws-serverless-express')).default;
+    cachedServer = cachedServerlessExpress.createServer(app);
+    cachedProxy = (event, context) =>
+      cachedServerlessExpress.proxy(cachedServer, event, context, 'PROMISE').promise;
+  }
+
+  return cachedProxy;
+}
+
+async function getDatabaseHealth() {
+  const response = {
+    service: 'learnia-user-management',
+    env: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    uptimeSeconds: Math.round(process.uptime())
+  };
+
+  const start = Date.now();
+
+  try {
+    const client = await pool.connect();
+    try {
+      await client.query('SELECT 1');
+      response.database = {
+        status: 'ok',
+        latencyMs: Date.now() - start
+      };
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Database health check failed:', error);
+    response.database = {
+      status: 'error',
+      code: error?.code,
+      message: error?.message
+    };
+  }
+
+  return response;
 }
 
 /**
  * Lambda Handler for AWS Lambda deployment
  */
-export const lambdaHandler = async (event, context) => {
+export const handler = async (event, context) => {
   const headers = {
     'Content-Type': 'application/json',
     'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
@@ -69,14 +119,6 @@ export const lambdaHandler = async (event, context) => {
       };
     }
 
-    if (normalizedPath === '/health') {
-      return {
-        statusCode: 200,
-        headers,
-        body: JSON.stringify({ ok: true })
-      };
-    }
-
     if (normalizedPath === '/info') {
       return {
         statusCode: 200,
@@ -89,35 +131,25 @@ export const lambdaHandler = async (event, context) => {
       };
     }
     
-    // Initialize app if not already initialized
-    if (!diContainer) {
-      const app = await initializeApplication();
-      
-      // Use serverless-express for Lambda
-      const serverlessExpress = (await import('aws-serverless-express')).default;
-      if (!globalThis.__server) {
-        globalThis.__server = serverlessExpress.createServer(app);
-      }
+    if (normalizedPath === '/health') {
+      const health = await getDatabaseHealth();
+      const statusCode = health.database?.status === 'ok' ? 200 : 503;
 
-      return serverlessExpress
-        .proxy(globalThis.__server, event, context, 'PROMISE')
-        .promise;
-    }
-    
-    // Handle subsequent requests...
-    const serverlessExpress = (await import('aws-serverless-express')).default;
-    if (!globalThis.__server) {
-      const applicationFactory = new ExpressApplicationFactory(diContainer);
-      const app = applicationFactory.create();
-      globalThis.__server = serverlessExpress.createServer(app);
+      return {
+        statusCode,
+        headers,
+        body: JSON.stringify(health)
+      };
     }
 
-    return serverlessExpress
-      .proxy(globalThis.__server, event, context, 'PROMISE')
-      .promise;
+    const proxy = await getServerlessProxy();
+    return proxy(event, context);
     
   } catch (error) {
     console.error('Lambda execution error:', error);
+    if (error?.stack) {
+      console.error('Stack trace:', error.stack);
+    }
     return {
       statusCode: 500,
       headers,

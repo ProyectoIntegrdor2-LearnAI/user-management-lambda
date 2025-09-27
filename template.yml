@@ -30,7 +30,7 @@ Globals:
     Architectures:
       - x86_64
     CodeUri: .
-    Handler: src/app.lambdaHandler
+  Handler: src/app.handler
     Environment:
       Variables:
         NODE_ENV: !Ref Environment

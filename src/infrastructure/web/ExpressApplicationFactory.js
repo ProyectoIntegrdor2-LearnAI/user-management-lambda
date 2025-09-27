@@ -53,23 +53,34 @@ export class ExpressApplicationFactory {
     // Health check endpoint
     app.get('/health', async (req, res) => {
       const healthcheck = {
-        uptime: process.uptime(),
-        message: 'OK',
+        service: 'learnia-user-management',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        uptimeSeconds: Math.round(process.uptime()),
+        database: {
+          status: 'unknown'
+        }
       };
 
       try {
-        // Check database connection
-  const dbPool = this.diContainer.get('dbPool');
-  await dbPool.query('SELECT 1');
-        healthcheck.database = 'connected';
+        const dbPool = this.diContainer.get('dbPool');
+        const start = Date.now();
+        await dbPool.query('SELECT 1');
+
+        healthcheck.database = {
+          status: 'ok',
+          latencyMs: Date.now() - start
+        };
       } catch (error) {
-        healthcheck.database = 'disconnected';
-        healthcheck.message = 'Degraded';
+        console.error('Database health endpoint error:', error);
+        healthcheck.database = {
+          status: 'error',
+          code: error?.code,
+          message: error?.message
+        };
       }
 
-      const statusCode = healthcheck.message === 'OK' ? 200 : 503;
+      const statusCode = healthcheck.database.status === 'ok' ? 200 : 503;
       res.status(statusCode).json(healthcheck);
     });
 
