@@ -3,27 +3,34 @@
  * Configuración de conexión a PostgreSQL
  */
 
-import { config } from '../config/index.js';
-import pkg from 'pg';
+import fs from 'fs';
+import { Pool } from 'pg';
 
-const { Pool } = pkg;
+const caPath = process.env.DB_CA_PATH;
+let ssl;
 
-const pool = process.env.DATABASE_URL
-  ? new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false }
-    })
-  : new Pool({
-      host: config.database.host,
-      port: Number(config.database.port),
-      user: config.database.user,
-      password: config.database.password,
-      database: config.database.name,
-      ssl: config.database.ssl ? { rejectUnauthorized: false } : undefined,
-      max: config.database.maxConnections,
-      idleTimeoutMillis: config.database.idleTimeoutMillis,
-      connectionTimeoutMillis: config.database.connectionTimeoutMillis
-    });
+if (caPath && fs.existsSync(caPath)) {
+  ssl = {
+    ca: fs.readFileSync(caPath, 'utf8'),
+    rejectUnauthorized: true
+  };
+} else if (process.env.DB_SSL === 'true') {
+  // Fallback para entornos locales sin CA configurada
+  ssl = { rejectUnauthorized: false };
+}
+
+const poolConfig = process.env.DATABASE_URL
+  ? { connectionString: process.env.DATABASE_URL, ssl }
+  : {
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT || 5432),
+      user: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      ssl
+    };
+
+const pool = new Pool(poolConfig);
 
 pool.on('connect', () => {
   console.log('✅ Conectado a la base de datos PostgreSQL');

@@ -39,8 +39,21 @@ Globals:
         JWT_EXPIRES_IN: "24h"
         BCRYPT_ROUNDS: "12"
         CORS_ORIGIN: !Ref CorsOrigin
+        DB_SSL: "true"
+        # Ruta del bundle CA montado desde el Layer en /opt/certs/
+        DB_CA_PATH: /opt/certs/rds-us-east-2-bundle.pem
 
 Resources:
+  RdsCaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: learnia-rds-ca
+      Description: RDS/DB CA bundle for SSL verification
+      ContentUri: layer-certs/ # carpeta que contiene "certs/<tu-archivo>.pem"
+      CompatibleRuntimes:
+        - nodejs20.x
+      LicenseInfo: MIT
+
   UserManagementFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -49,6 +62,8 @@ Resources:
       Policies:
         - AWSLambdaBasicExecutionRole
         - AWSLambdaVPCAccessExecutionRole
+      Layers:
+        - !Ref RdsCaLayer
       VpcConfig:
         SubnetIds: !Ref VpcSubnetIds
         SecurityGroupIds: !Ref VpcSecurityGroupIds
