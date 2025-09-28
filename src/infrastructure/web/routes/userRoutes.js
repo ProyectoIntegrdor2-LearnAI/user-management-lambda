@@ -36,6 +36,23 @@ export function createUserRoutes({
     profileWebController.getUpdateProfileHandler()
   );
 
+  // Progreso del usuario
+  router.get('/me/progress',
+    profileWebController.getProgressHandler()
+  );
+
+  router.get('/:id/progress',
+    profileWebController.getProgressHandler()
+  );
+
+  router.post('/me/progress',
+    profileWebController.getUpdateProgressHandler()
+  );
+
+  router.post('/:id/progress',
+    profileWebController.getUpdateProgressHandler()
+  );
+
   // Dashboard del usuario
   router.get('/me/dashboard',
     profileWebController.getDashboardHandler()

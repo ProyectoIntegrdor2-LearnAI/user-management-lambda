@@ -15,6 +15,24 @@ const DEFAULT_ALLOWED_HEADERS = [
 
 const DEFAULT_ALLOWED_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'];
 
+function normalizeOrigin(origin) {
+  if (!origin) {
+    return '';
+  }
+
+  const trimmed = origin.trim();
+  if (trimmed === '*' || trimmed === '') {
+    return trimmed;
+  }
+
+  const sanitized = trimmed.replace(/\s+/g, '');
+  if (/^https?:\/\//i.test(sanitized)) {
+    return sanitized;
+  }
+
+  return `https://${sanitized.replace(/^\/*/, '').replace(/\/*$/, '')}`;
+}
+
 function parseAllowedOrigins() {
   const raw = process.env.CORS_ORIGIN;
   if (!raw || raw.trim() === '') {
@@ -23,7 +41,7 @@ function parseAllowedOrigins() {
 
   return raw
     .split(',')
-    .map(origin => origin.trim())
+    .map(origin => normalizeOrigin(origin))
     .filter(Boolean);
 }
 

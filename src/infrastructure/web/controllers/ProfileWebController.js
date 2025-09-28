@@ -77,6 +77,89 @@ export class ProfileWebController {
   }
 
   /**
+   * Obtiene el progreso del usuario
+   */
+  async getProgress(req, res, next) {
+    try {
+      const { id } = req.params;
+      const authenticatedUserId = String(req.user.user_id);
+      const requestedUserId = typeof id === 'string' ? id : null;
+      const targetUserId = !requestedUserId || requestedUserId === 'me'
+        ? authenticatedUserId
+        : String(requestedUserId);
+
+      if (targetUserId !== authenticatedUserId) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para ver este progreso'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Progreso obtenido exitosamente',
+        data: {
+          progress: {
+            completedCourses: 0,
+            totalCourses: 0,
+            consecutiveDays: 0,
+            totalHours: 0,
+            level: 'Sin datos'
+          }
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Actualiza el progreso del usuario (placeholder)
+   */
+  async updateProgress(req, res, next) {
+    try {
+      const { id } = req.params;
+      const authenticatedUserId = String(req.user.user_id);
+      const requestedUserId = typeof id === 'string' ? id : null;
+      const targetUserId = !requestedUserId || requestedUserId === 'me'
+        ? authenticatedUserId
+        : String(requestedUserId);
+
+      if (targetUserId !== authenticatedUserId) {
+        return res.status(403).json({
+          success: false,
+          message: 'No tienes permisos para actualizar este progreso'
+        });
+      }
+
+      const { resourceId } = req.body ?? {};
+      if (!resourceId) {
+        return res.status(400).json({
+          success: false,
+          message: 'resourceId es requerido'
+        });
+      }
+
+      return res.status(200).json({
+        success: true,
+        message: 'Progreso registrado (placeholder)',
+        data: {
+          progress: {
+            completedCourses: 0,
+            totalCourses: 0,
+            consecutiveDays: 0,
+            totalHours: 0,
+            level: 'Sin datos'
+          },
+          resourceId
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
    * Obtiene el dashboard del usuario (versión simplificada)
    */
   async getDashboard(req, res, next) {
@@ -133,5 +216,13 @@ export class ProfileWebController {
 
   getDashboardHandler() {
     return this.getDashboard.bind(this);
+  }
+
+  getProgressHandler() {
+    return this.getProgress.bind(this);
+  }
+
+  getUpdateProgressHandler() {
+    return this.updateProgress.bind(this);
   }
 }
