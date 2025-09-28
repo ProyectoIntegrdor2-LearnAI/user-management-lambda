@@ -3,6 +3,8 @@
  * Middleware para manejo centralizado de errores
  */
 
+import { ValidationError } from '../../../shared/errors/ValidationError.js';
+
 export class ErrorHandlerMiddleware {
   
   /**
@@ -12,16 +14,29 @@ export class ErrorHandlerMiddleware {
     return (err, req, res, next) => {
       console.error('Error capturado:', err);
 
-      if (err.name === 'ValidationError') {
-        const missing = Array.isArray(err.details) ? err.details : [];
-        const message = missing.length > 0
-          ? `Faltan campos requeridos: ${missing.join(', ')}`
-          : err.message;
+      if (err instanceof ValidationError || err.name === 'ValidationError') {
+        const missing = typeof err.getMissingFields === 'function' ? err.getMissingFields() : [];
+        const invalidDetails = typeof err.getInvalidFields === 'function' ? err.getInvalidFields() : [];
+
+        const invalid = invalidDetails.map(item =>
+          typeof item === 'string' ? { field: item, message: 'Campo inválido' } : item
+        );
+
+        const pieces = [];
+        if (missing.length) {
+          pieces.push(`Faltan campos requeridos: ${missing.join(', ')}`);
+        }
+        if (invalid.length) {
+          pieces.push('Hay campos con valores inválidos');
+        }
+
+        const message = pieces.length > 0 ? pieces.join('. ') : err.message;
 
         return res.status(400).json({
           success: false,
           message,
           missing,
+          invalid,
           required: ['identification', 'name', 'email', 'password']
         });
       }

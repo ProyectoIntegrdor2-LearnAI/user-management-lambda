@@ -13,26 +13,24 @@ export class RegisterUserUseCase {
   }
 
   async execute({ identification, name, email, phone = null, password, address = null, type_user }) {
-  const missing = [];
-  if (!identification) missing.push('identification');
-  if (!name) missing.push('name');
-  if (!email) missing.push('email');
-  if (!password) missing.push('password');
+    const missing = [];
+    const invalid = [];
 
-    if (missing.length) {
-      throw new ValidationError('MISSING_REQUIRED_FIELDS', missing);
+    if (!identification) missing.push('identification');
+    if (!name) missing.push('name');
+    if (!email) missing.push('email');
+    if (!password) missing.push('password');
+
+    if (password && password.length < 8) {
+      invalid.push({ field: 'password', rule: 'minLength', message: 'La contraseña debe tener al menos 8 caracteres' });
     }
 
-    if (!User.validateEmail(email)) {
-      throw new Error('INVALID_EMAIL', {
-        message: 'El formato del email es inválido'
-      });
+    if (!User.validateEmail(email ?? '')) {
+      invalid.push({ field: 'email', rule: 'format', message: 'El formato del email es inválido' });
     }
 
-    if (!User.validatePassword(password)) {
-      throw new Error('INVALID_PASSWORD', {
-        message: 'La contraseña debe tener al menos 8 caracteres'
-      });
+    if (missing.length || invalid.length) {
+      throw new ValidationError('REGISTRATION_VALIDATION_FAILED', { missing, invalid });
     }
 
     // Verificar unicidad

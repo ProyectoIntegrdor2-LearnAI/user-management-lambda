@@ -45,38 +45,46 @@ export class ValidationMiddleware {
     return (req, res, next) => {
       const normalizedBody = { ...req.body };
       const missing = [];
+      const invalid = [];
 
-      const name = typeof normalizedBody.name === 'string' ? normalizedBody.name.trim() : normalizedBody.name;
-      const email = typeof normalizedBody.email === 'string' ? normalizedBody.email.trim() : normalizedBody.email;
-      const password = normalizedBody.password;
-      const identification = normalizedBody.identification?.toString().trim();
+      const rawName = normalizedBody.name;
+      const rawEmail = normalizedBody.email;
+      const rawPassword = normalizedBody.password;
+      const rawIdentification = normalizedBody.identification;
       const type_user = normalizedBody.type_user;
 
-      REQUIRED_FIELDS.forEach(field => {
-        const value = field === 'name' ? name : field === 'email' ? email : field === 'identification' ? identification : normalizedBody[field];
+      const name = typeof rawName === 'string' ? rawName.trim() : rawName;
+      const email = typeof rawEmail === 'string' ? rawEmail.trim() : rawEmail;
+      const identification = rawIdentification?.toString().trim();
+      const password = typeof rawPassword === 'string' ? rawPassword : rawPassword;
 
-        if (!value || (typeof value === 'string' && value.trim().length === 0)) {
-          missing.push(field);
-        }
-      });
-
-      if (name && name.length < 2 && !missing.includes('name')) {
-        missing.push('name');
+      if (!identification) {
+        missing.push('identification');
       }
 
-      if (email) {
+      if (!name) {
+        missing.push('name');
+      } else if (name.length < 2) {
+        invalid.push({ field: 'name', rule: 'minLength', message: 'El nombre debe tener al menos 2 caracteres' });
+      }
+
+      if (!email) {
+        missing.push('email');
+      } else {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-          missing.push('email');
+          invalid.push({ field: 'email', rule: 'format', message: 'El email debe tener un formato válido' });
         }
       }
 
-      if (password && password.length < 6 && !missing.includes('password')) {
+      if (!password) {
         missing.push('password');
+      } else if (password.length < 8) {
+        invalid.push({ field: 'password', rule: 'minLength', message: 'La contraseña debe tener al menos 8 caracteres' });
       }
 
-      if (missing.length > 0) {
-        return next(new ValidationError('MISSING_REQUIRED_FIELDS', missing));
+      if (missing.length > 0 || invalid.length > 0) {
+        return next(new ValidationError('REGISTRATION_VALIDATION_FAILED', { missing, invalid }));
       }
 
       const optionalSanitized = OPTIONAL_FIELDS.reduce((acc, field) => {
