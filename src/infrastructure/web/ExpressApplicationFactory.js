@@ -32,10 +32,14 @@ export class ExpressApplicationFactory {
   }
 
   _configureBasicMiddleware(app) {
-    // CORS configuration
-    const corsOptions = createCorsOptions();
-    app.use(cors(corsOptions));
-    app.options('*', cors(corsOptions));
+    const isLambdaEnv = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+    const enableInternalCors = process.env.ENABLE_INTERNAL_CORS !== 'false' && !isLambdaEnv;
+
+    if (enableInternalCors) {
+      const corsOptions = createCorsOptions();
+      app.use(cors(corsOptions));
+      app.options('*', cors(corsOptions));
+    }
 
     // JSON parsing
     app.use(express.json({ limit: '10mb' }));
