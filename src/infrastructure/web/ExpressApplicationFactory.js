@@ -5,7 +5,7 @@
 
 import express from 'express';
 import cors from 'cors';
-import { createCorsOptions } from './cors/corsConfig.js';
+import { createCorsOptions, getAllowedOrigins } from './cors/corsConfig.js';
 import { createAuthRoutes, createUserRoutes } from './routes/index.js';
 
 export class ExpressApplicationFactory {
@@ -39,6 +39,19 @@ export class ExpressApplicationFactory {
       const corsOptions = createCorsOptions();
       app.use(cors(corsOptions));
       app.options('*', cors(corsOptions));
+    }
+
+    const allowedOrigins = getAllowedOrigins().filter(origin => origin !== '*');
+    const fallbackOrigin = process.env.DEFAULT_ALLOW_ORIGIN || 'https://www.learn-ia.app';
+    const allowOriginHeader = allowedOrigins[0] || fallbackOrigin;
+
+    if (allowOriginHeader) {
+      app.use((req, res, next) => {
+        if (req.method !== 'OPTIONS') {
+          res.setHeader('Access-Control-Allow-Origin', allowOriginHeader);
+        }
+        next();
+      });
     }
 
     // JSON parsing
