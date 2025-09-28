@@ -12,7 +12,7 @@ export class RegisterUserUseCase {
     this.passwordService = passwordService;
   }
 
-  async execute({ identification, name, email, phone, password, address, type_user }) {
+  async execute({ identification, name, email, phone = null, password, address = null, type_user }) {
   const missing = [];
   if (!identification) missing.push('identification');
   if (!name) missing.push('name');
@@ -58,8 +58,8 @@ export class RegisterUserUseCase {
       identification,
       name,
       email,
-      phone,
-      address,
+  phone,
+  address,
       password_hash: passwordHash,
       type_user: type_user || 'student'
     });

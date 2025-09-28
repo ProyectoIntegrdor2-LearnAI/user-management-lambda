@@ -5,6 +5,18 @@
 
 import { ValidationError } from '../../../shared/errors/ValidationError.js';
 
+const REQUIRED_FIELDS = [
+  'identification',
+  'name',
+  'email',
+  'password'
+];
+
+const OPTIONAL_FIELDS = [
+  'phone',
+  'address'
+];
+
 export class ValidationMiddleware {
   
   /**
@@ -31,39 +43,56 @@ export class ValidationMiddleware {
    */
   static validateRegistration() {
     return (req, res, next) => {
-      const { name, email, password, identification, phone, address, type_user } = req.body;
+      const normalizedBody = { ...req.body };
       const missing = [];
 
-      if (!name || name.trim().length < 2) {
+      const name = typeof normalizedBody.name === 'string' ? normalizedBody.name.trim() : normalizedBody.name;
+      const email = typeof normalizedBody.email === 'string' ? normalizedBody.email.trim() : normalizedBody.email;
+      const password = normalizedBody.password;
+      const identification = normalizedBody.identification?.toString().trim();
+      const type_user = normalizedBody.type_user;
+
+      REQUIRED_FIELDS.forEach(field => {
+        const value = field === 'name' ? name : field === 'email' ? email : field === 'identification' ? identification : normalizedBody[field];
+
+        if (!value || (typeof value === 'string' && value.trim().length === 0)) {
+          missing.push(field);
+        }
+      });
+
+      if (name && name.length < 2 && !missing.includes('name')) {
         missing.push('name');
       }
 
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!email || !emailRegex.test(email)) {
-        missing.push('email');
+      if (email) {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+          missing.push('email');
+        }
       }
 
-      if (!password || password.length < 6) {
+      if (password && password.length < 6 && !missing.includes('password')) {
         missing.push('password');
-      }
-
-      if (!identification || identification.toString().trim().length === 0) {
-        missing.push('identification');
       }
 
       if (missing.length > 0) {
         return next(new ValidationError('MISSING_REQUIRED_FIELDS', missing));
       }
 
+      const optionalSanitized = OPTIONAL_FIELDS.reduce((acc, field) => {
+        const value = normalizedBody[field];
+        acc[field] = value ?? null;
+        return acc;
+      }, {});
+
       req.validated = {
         ...(req.validated || {}),
         body: {
-          name: name.trim(),
-          email: email.trim(),
+          name,
+          email,
           password,
-          identification: identification.toString().trim(),
-          phone: phone ?? null,
-          address: address ?? null,
+          identification,
+          ...optionalSanitized,
           type_user: type_user ?? 'user'
         }
       };
