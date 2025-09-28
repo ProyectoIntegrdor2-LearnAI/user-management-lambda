@@ -74,36 +74,136 @@ Resources:
         SubnetIds: !Ref VpcSubnetIds
         SecurityGroupIds: !Ref VpcSecurityGroupIds
       Events:
-        Register:
+        AuthRegister:
           Type: Api
           Properties:
             Path: /auth/register
             Method: POST
-        Login:
+        AuthLogin:
           Type: Api
           Properties:
             Path: /auth/login
             Method: POST
-        Logout:
+        AuthLogout:
           Type: Api
           Properties:
             Path: /auth/logout
             Method: POST
-        GetProfile:
+        AuthRegisterApi:
+          Type: Api
+          Properties:
+            Path: /api/auth/register
+            Method: POST
+        AuthLoginApi:
+          Type: Api
+          Properties:
+            Path: /api/auth/login
+            Method: POST
+        AuthLogoutApi:
+          Type: Api
+          Properties:
+            Path: /api/auth/logout
+            Method: POST
+        UsersGetById:
           Type: Api
           Properties:
             Path: /users/{id}
             Method: GET
-        UpdateProfile:
+        UsersUpdateById:
           Type: Api
           Properties:
             Path: /users/{id}/profile
             Method: PUT
-        Dashboard:
+        UsersDashboardById:
           Type: Api
           Properties:
             Path: /users/{id}/dashboard
             Method: GET
+        UsersProgressGetById:
+          Type: Api
+          Properties:
+            Path: /users/{id}/progress
+            Method: GET
+        UsersProgressUpdateById:
+          Type: Api
+          Properties:
+            Path: /users/{id}/progress
+            Method: POST
+        UsersGetMe:
+          Type: Api
+          Properties:
+            Path: /users/me
+            Method: GET
+        UsersUpdateMe:
+          Type: Api
+          Properties:
+            Path: /users/me/profile
+            Method: PUT
+        UsersDashboardMe:
+          Type: Api
+          Properties:
+            Path: /users/me/dashboard
+            Method: GET
+        UsersProgressGetMe:
+          Type: Api
+          Properties:
+            Path: /users/me/progress
+            Method: GET
+        UsersProgressUpdateMe:
+          Type: Api
+          Properties:
+            Path: /users/me/progress
+            Method: POST
+        UsersGetByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}
+            Method: GET
+        UsersUpdateByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/profile
+            Method: PUT
+        UsersDashboardByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/dashboard
+            Method: GET
+        UsersProgressGetByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/progress
+            Method: GET
+        UsersProgressUpdateByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/progress
+            Method: POST
+        UsersGetMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me
+            Method: GET
+        UsersUpdateMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/profile
+            Method: PUT
+        UsersDashboardMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/dashboard
+            Method: GET
+        UsersProgressGetMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/progress
+            Method: GET
+        UsersProgressUpdateMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/progress
+            Method: POST
         Health:
           Type: Api
           Properties:
