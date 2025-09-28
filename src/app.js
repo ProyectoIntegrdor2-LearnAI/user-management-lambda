@@ -89,6 +89,46 @@ async function getDatabaseHealth() {
   return response;
 }
 
+const CORS_HEADER_KEYS = new Set([
+  'access-control-allow-origin',
+  'access-control-allow-methods',
+  'access-control-allow-headers',
+  'access-control-allow-credentials',
+  'vary'
+]);
+
+const sanitizeHeaders = (headers = {}) => {
+  if (!headers || typeof headers !== 'object') {
+    return {};
+  }
+
+  return Object.entries(headers).reduce((acc, [key, value]) => {
+    if (!CORS_HEADER_KEYS.has(key?.toLowerCase?.() ?? key)) {
+      acc[key] = value;
+    }
+    return acc;
+  }, {});
+};
+
+const sanitizeMultiValueHeaders = (multiValueHeaders) => {
+  if (!multiValueHeaders || typeof multiValueHeaders !== 'object') {
+    return undefined;
+  }
+
+  const sanitizedEntries = Object.entries(multiValueHeaders).filter(([key]) => {
+    return !CORS_HEADER_KEYS.has(key?.toLowerCase?.() ?? key);
+  });
+
+  if (sanitizedEntries.length === 0) {
+    return undefined;
+  }
+
+  return sanitizedEntries.reduce((acc, [key, value]) => {
+    acc[key] = value;
+    return acc;
+  }, {});
+};
+
 /**
  * Lambda Handler for AWS Lambda deployment
  */
@@ -105,13 +145,14 @@ export const handler = async (event, context) => {
   };
 
   const mergeCorsHeaders = (baseHeaders = {}) => {
+    const sanitizedHeaders = sanitizeHeaders(baseHeaders);
     const corsHeaders = resolveCorsHeaders();
     if (!corsHeaders) {
-      return baseHeaders;
+      return sanitizedHeaders;
     }
 
     return {
-      ...baseHeaders,
+      ...sanitizedHeaders,
       ...corsHeaders
     };
   };
@@ -164,21 +205,11 @@ export const handler = async (event, context) => {
 
     response.headers = mergeCorsHeaders(response.headers || {});
 
-    if (response.multiValueHeaders) {
-      const corsHeaders = resolveCorsHeaders();
-      if (corsHeaders) {
-        Object.entries(corsHeaders).forEach(([key, value]) => {
-          const existing = response.multiValueHeaders[key] || [];
-          const existingArray = Array.isArray(existing) ? existing : [existing];
-          const valuesArray = Array.isArray(value) ? value : [value];
-          response.multiValueHeaders[key] = Array.from(
-            new Set([
-              ...existingArray.filter(Boolean),
-              ...valuesArray
-            ])
-          );
-        });
-      }
+    const sanitizedMultiValue = sanitizeMultiValueHeaders(response.multiValueHeaders);
+    if (sanitizedMultiValue) {
+      response.multiValueHeaders = sanitizedMultiValue;
+    } else {
+      delete response.multiValueHeaders;
     }
 
     return response;
