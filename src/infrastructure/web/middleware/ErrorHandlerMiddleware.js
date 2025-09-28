@@ -13,10 +13,16 @@ export class ErrorHandlerMiddleware {
       console.error('Error capturado:', err);
 
       if (err.name === 'ValidationError') {
+        const missing = Array.isArray(err.details) ? err.details : [];
+        const message = missing.length > 0
+          ? `Faltan campos requeridos: ${missing.join(', ')}`
+          : err.message;
+
         return res.status(400).json({
           success: false,
-          message: err.message,
-          missing: err.details || []
+          message,
+          missing,
+          required: ['identification', 'name', 'email', 'password']
         });
       }
       

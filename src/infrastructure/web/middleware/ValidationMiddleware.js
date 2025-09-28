@@ -81,7 +81,12 @@ export class ValidationMiddleware {
 
       const optionalSanitized = OPTIONAL_FIELDS.reduce((acc, field) => {
         const value = normalizedBody[field];
-        acc[field] = value ?? null;
+        if (typeof value === 'string') {
+          const trimmed = value.trim();
+          acc[field] = trimmed.length > 0 ? trimmed : null;
+        } else {
+          acc[field] = value ?? null;
+        }
         return acc;
       }, {});
 
