@@ -31,6 +31,10 @@ export class UserSession {
     return this.is_active && !this.isExpired();
   }
 
+  isActive() {
+    return this.isValid();
+  }
+
   invalidate() {
     this.is_active = false;
   }

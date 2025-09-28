@@ -9,6 +9,14 @@ export class UserSessionRepository {
     throw new Error('Method must be implemented');
   }
 
+  async findActiveByTokenHash(jwt_token_hash) {
+    throw new Error('Method must be implemented');
+  }
+
+  async findByUserIdAndTokenHash(user_id, jwt_token_hash) {
+    throw new Error('Method must be implemented');
+  }
+
   async findActiveSessionsByUserId(user_id) {
     throw new Error('Method must be implemented');
   }
