@@ -37,9 +37,11 @@ export class UpdateUserProfileUseCase {
       });
     }
 
+    const sanitizedUpdates = { ...updates };
+
     // Si se está actualizando el email, verificar que no exista
-    if (updates.email && updates.email !== user.email) {
-      const existingUser = await this.userRepository.findByEmail(updates.email);
+    if (sanitizedUpdates.email && sanitizedUpdates.email !== user.email) {
+      const existingUser = await this.userRepository.findByEmail(sanitizedUpdates.email);
       if (existingUser) {
         throw new Error('EMAIL_EXISTS', {
           message: 'El email ya está registrado'
@@ -48,17 +50,18 @@ export class UpdateUserProfileUseCase {
     }
 
     // Si se está actualizando la contraseña, hashearla
-    if (updates.password) {
-      updates.password_hash = await this.passwordService.hash(updates.password);
-      delete updates.password; // No almacenar la contraseña en texto plano
+    if (sanitizedUpdates.password) {
+      sanitizedUpdates.password_hash = await this.passwordService.hash(sanitizedUpdates.password);
+      delete sanitizedUpdates.password; // No almacenar la contraseña en texto plano
     }
 
     try {
       // Actualizar usuario usando los métodos del dominio
-      if (updates.name) user.updateName(updates.name);
-      if (updates.email) user.updateEmail(updates.email);
-      if (updates.password_hash) user.updatePasswordHash(updates.password_hash);
-      if (updates.phone !== undefined) user.updatePhone(updates.phone);
+      if (sanitizedUpdates.name) user.updateName(sanitizedUpdates.name);
+      if (sanitizedUpdates.email) user.updateEmail(sanitizedUpdates.email);
+      if (sanitizedUpdates.password_hash) user.updatePasswordHash(sanitizedUpdates.password_hash);
+      if (sanitizedUpdates.phone !== undefined) user.updatePhone(sanitizedUpdates.phone);
+      if (sanitizedUpdates.address !== undefined) user.updateAddress(sanitizedUpdates.address);
 
       // Guardar en el repositorio
       const updatedUser = await this.userRepository.update(user);

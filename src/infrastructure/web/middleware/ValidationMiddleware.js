@@ -5,27 +5,16 @@
 
 import { ValidationError } from '../../../shared/errors/ValidationError.js';
 
-const REQUIRED_FIELDS = [
-  'identification',
-  'name',
-  'email',
-  'password'
-];
-
-const OPTIONAL_FIELDS = [
-  'phone',
-  'address'
-];
+const OPTIONAL_FIELDS = ['phone', 'address'];
 
 export class ValidationMiddleware {
-  
   /**
    * Middleware genérico de validación usando esquemas
    */
   static validate(schema) {
     return (req, res, next) => {
       const { error } = schema.validate(req.body);
-      
+
       if (error) {
         return res.status(400).json({
           success: false,
@@ -33,7 +22,7 @@ export class ValidationMiddleware {
           errors: error.details.map(detail => detail.message)
         });
       }
-      
+
       next();
     };
   }
@@ -147,32 +136,57 @@ export class ValidationMiddleware {
    */
   static validateProfileUpdate() {
     return (req, res, next) => {
-      const { name, email, password, phone } = req.body;
+      const { name, email, password, phone, address } = req.body;
       const errors = [];
+      const sanitized = {};
 
-      // Validar nombre si se proporciona
-      if (name !== undefined && (!name || name.trim().length < 2)) {
-        errors.push('El nombre debe tener al menos 2 caracteres');
-      }
-
-      // Validar email si se proporciona
-      if (email !== undefined) {
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!email || !emailRegex.test(email)) {
-          errors.push('El email debe tener un formato válido');
+      if (name !== undefined) {
+        const trimmed = typeof name === 'string' ? name.trim() : name;
+        if (!trimmed || trimmed.length < 2) {
+          errors.push('El nombre debe tener al menos 2 caracteres');
+        } else {
+          sanitized.name = trimmed;
         }
       }
 
-      // Validar contraseña si se proporciona
-      if (password !== undefined && password.length < 6) {
-        errors.push('La contraseña debe tener al menos 6 caracteres');
+      if (email !== undefined) {
+        const trimmed = typeof email === 'string' ? email.trim() : email;
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!trimmed || !emailRegex.test(trimmed)) {
+          errors.push('El email debe tener un formato válido');
+        } else {
+          sanitized.email = trimmed;
+        }
       }
 
-      // Validar teléfono si se proporciona
-      if (phone !== undefined && phone !== null && phone !== '') {
-        const phoneRegex = /^[+]?[\d\s\-\(\)]{10,}$/;
-        if (!phoneRegex.test(phone)) {
-          errors.push('El teléfono debe tener un formato válido');
+      if (password !== undefined) {
+        if (!password || password.length < 8) {
+          errors.push('La contraseña debe tener al menos 8 caracteres');
+        } else {
+          sanitized.password = password;
+        }
+      }
+
+      if (phone !== undefined) {
+        if (phone === null || phone === '') {
+          sanitized.phone = null;
+        } else {
+          const phoneRegex = /^[+]?[\d\s\-\(\)]{10,}$/;
+          if (!phoneRegex.test(phone)) {
+            errors.push('El teléfono debe tener un formato válido');
+          } else {
+            sanitized.phone = phone;
+          }
+        }
+      }
+
+      if (address !== undefined) {
+        if (address === null || address === '') {
+          sanitized.address = null;
+        } else if (typeof address === 'string') {
+          sanitized.address = address.trim();
+        } else {
+          sanitized.address = address;
         }
       }
 
@@ -182,6 +196,13 @@ export class ValidationMiddleware {
           message: 'Datos de actualización inválidos',
           errors
         });
+      }
+
+      if (Object.keys(sanitized).length > 0) {
+        req.validated = {
+          ...(req.validated || {}),
+          body: sanitized
+        };
       }
 
       next();

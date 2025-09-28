@@ -18,11 +18,12 @@ export class ProfileWebController {
   async getProfile(req, res, next) {
     try {
       const { id } = req.params;
-      const authenticatedUserId = req.user.user_id;
+      const authenticatedUserId = String(req.user.user_id);
+      const requestedUserId = String(id);
       
       // Verificar que el usuario solo pueda ver su propio perfil
       // (o implementar lógica de permisos más compleja si es necesario)
-      if (parseInt(id) !== authenticatedUserId) {
+      if (requestedUserId !== authenticatedUserId) {
         return res.status(403).json({
           success: false,
           message: 'No tienes permisos para ver este perfil'
@@ -30,7 +31,7 @@ export class ProfileWebController {
       }
       
       const result = await this.getUserProfileUseCase.execute({
-        user_id: parseInt(id)
+        user_id: requestedUserId
       });
 
       return res.status(200).json(result);
@@ -46,11 +47,12 @@ export class ProfileWebController {
   async updateProfile(req, res, next) {
     try {
       const { id } = req.params;
-      const authenticatedUserId = req.user.user_id;
-      const updates = req.body;
+      const authenticatedUserId = String(req.user.user_id);
+      const requestedUserId = String(id);
+      const updates = req.validated?.body ?? req.body;
       
       // Verificar que el usuario solo pueda actualizar su propio perfil
-      if (parseInt(id) !== authenticatedUserId) {
+      if (requestedUserId !== authenticatedUserId) {
         return res.status(403).json({
           success: false,
           message: 'No tienes permisos para actualizar este perfil'
@@ -58,7 +60,7 @@ export class ProfileWebController {
       }
       
       const result = await this.updateUserProfileUseCase.execute({
-        user_id: parseInt(id),
+        user_id: requestedUserId,
         updates
       });
 
@@ -75,10 +77,11 @@ export class ProfileWebController {
   async getDashboard(req, res, next) {
     try {
       const { id } = req.params;
-      const authenticatedUserId = req.user.user_id;
+      const authenticatedUserId = String(req.user.user_id);
+      const requestedUserId = String(id);
       
       // Verificar permisos
-      if (parseInt(id) !== authenticatedUserId) {
+      if (requestedUserId !== authenticatedUserId) {
         return res.status(403).json({
           success: false,
           message: 'No tienes permisos para ver este dashboard'
@@ -88,7 +91,7 @@ export class ProfileWebController {
       // Por ahora, el dashboard es simplemente el perfil del usuario
       // En el futuro se puede extender con más información
       const result = await this.getUserProfileUseCase.execute({
-        user_id: parseInt(id)
+        user_id: requestedUserId
       });
 
       return res.status(200).json({
