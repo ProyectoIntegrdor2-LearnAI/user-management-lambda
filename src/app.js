@@ -7,6 +7,7 @@ import 'dotenv/config';
 import { config, validateConfig } from './infrastructure/config/index.js';
 import { DIContainer } from './infrastructure/DIContainer.js';
 import { ExpressApplicationFactory } from './infrastructure/web/ExpressApplicationFactory.js';
+import { buildCorsHeaders, normalizeOrigin } from './infrastructure/web/cors/corsConfig.js';
 import pool from './infrastructure/database/connection.js';
 
 // Global DI Container instance
@@ -96,6 +97,25 @@ export const handler = async (event, context) => {
     'Content-Type': 'application/json'
   };
 
+  const requestOrigin = event?.headers?.origin || event?.headers?.Origin;
+  const fallbackOrigin = normalizeOrigin(process.env.DEFAULT_ALLOW_ORIGIN);
+
+  const resolveCorsHeaders = () => {
+    return buildCorsHeaders(requestOrigin) || buildCorsHeaders(fallbackOrigin);
+  };
+
+  const mergeCorsHeaders = (baseHeaders = {}) => {
+    const corsHeaders = resolveCorsHeaders();
+    if (!corsHeaders) {
+      return baseHeaders;
+    }
+
+    return {
+      ...baseHeaders,
+      ...corsHeaders
+    };
+  };
+
   try {
     console.log('Lambda Event:', JSON.stringify(event, null, 2));
 
@@ -111,7 +131,7 @@ export const handler = async (event, context) => {
     if (event?.requestContext?.http?.method === 'OPTIONS' || event?.httpMethod === 'OPTIONS') {
       return {
         statusCode: 204,
-        headers,
+        headers: mergeCorsHeaders(headers),
         body: ''
       };
     }
@@ -119,7 +139,7 @@ export const handler = async (event, context) => {
     if (normalizedPath === '/info') {
       return {
         statusCode: 200,
-        headers,
+        headers: mergeCorsHeaders(headers),
         body: JSON.stringify({
           name: 'learnia-user-management',
           env: process.env.NODE_ENV || 'development',
@@ -134,13 +154,34 @@ export const handler = async (event, context) => {
 
       return {
         statusCode,
-        headers,
+        headers: mergeCorsHeaders(headers),
         body: JSON.stringify(health)
       };
     }
 
     const proxy = await getServerlessProxy();
-    return proxy(event, context);
+    const response = await proxy(event, context);
+
+    response.headers = mergeCorsHeaders(response.headers || {});
+
+    if (response.multiValueHeaders) {
+      const corsHeaders = resolveCorsHeaders();
+      if (corsHeaders) {
+        Object.entries(corsHeaders).forEach(([key, value]) => {
+          const existing = response.multiValueHeaders[key] || [];
+          const existingArray = Array.isArray(existing) ? existing : [existing];
+          const valuesArray = Array.isArray(value) ? value : [value];
+          response.multiValueHeaders[key] = Array.from(
+            new Set([
+              ...existingArray.filter(Boolean),
+              ...valuesArray
+            ])
+          );
+        });
+      }
+    }
+
+    return response;
     
   } catch (error) {
     console.error('Lambda execution error:', error);
@@ -149,7 +190,7 @@ export const handler = async (event, context) => {
     }
     return {
       statusCode: 500,
-      headers,
+      headers: mergeCorsHeaders(headers),
       body: JSON.stringify({
         success: false,
         message: 'Internal server error'

@@ -5,7 +5,12 @@
 
 import express from 'express';
 import cors from 'cors';
-import { createCorsOptions, getAllowedOrigins } from './cors/corsConfig.js';
+import {
+  buildCorsHeaders,
+  createCorsOptions,
+  getAllowedOrigins,
+  normalizeOrigin
+} from './cors/corsConfig.js';
 import { createAuthRoutes, createUserRoutes } from './routes/index.js';
 
 export class ExpressApplicationFactory {
@@ -35,23 +40,39 @@ export class ExpressApplicationFactory {
     const isLambdaEnv = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
     const enableInternalCors = process.env.ENABLE_INTERNAL_CORS !== 'false' && !isLambdaEnv;
 
+    const allowedOrigins = getAllowedOrigins().filter(origin => origin !== '*');
+    const fallbackOriginCandidate = process.env.DEFAULT_ALLOW_ORIGIN || allowedOrigins[0] || 'https://www.learn-ia.app';
+    const fallbackOrigin = normalizeOrigin(fallbackOriginCandidate);
+
+    const applyCorsHeaders = (req, res) => {
+      const requestOrigin = req.headers.origin || req.headers.Origin;
+      const corsHeaders = buildCorsHeaders(requestOrigin) || buildCorsHeaders(fallbackOrigin);
+      if (!corsHeaders) {
+        return;
+      }
+
+      Object.entries(corsHeaders)
+        .filter(([, value]) => typeof value !== 'undefined')
+        .forEach(([key, value]) => {
+          res.setHeader(key, value);
+        });
+    };
+
+    app.use((req, res, next) => {
+      applyCorsHeaders(req, res);
+
+      if (!enableInternalCors && req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+
+      next();
+    });
+
     if (enableInternalCors) {
       const corsOptions = createCorsOptions();
       app.use(cors(corsOptions));
       app.options('*', cors(corsOptions));
-    }
-
-    const allowedOrigins = getAllowedOrigins().filter(origin => origin !== '*');
-    const fallbackOrigin = process.env.DEFAULT_ALLOW_ORIGIN || 'https://www.learn-ia.app';
-    const allowOriginHeader = allowedOrigins[0] || fallbackOrigin;
-
-    if (allowOriginHeader) {
-      app.use((req, res, next) => {
-        if (req.method !== 'OPTIONS') {
-          res.setHeader('Access-Control-Allow-Origin', allowOriginHeader);
-        }
-        next();
-      });
     }
 
     // JSON parsing

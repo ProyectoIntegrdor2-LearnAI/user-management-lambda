@@ -21,16 +21,24 @@ function normalizeOrigin(origin) {
   }
 
   const trimmed = origin.trim();
-  if (trimmed === '*' || trimmed === '') {
+  if (trimmed === '' || trimmed === '*') {
     return trimmed;
   }
 
   const sanitized = trimmed.replace(/\s+/g, '');
-  if (/^https?:\/\//i.test(sanitized)) {
-    return sanitized;
-  }
+  const ensuredScheme = /^https?:\/\//i.test(sanitized)
+    ? sanitized
+    : `https://${sanitized.replace(/^\/*/, '')}`;
 
-  return `https://${sanitized.replace(/^\/*/, '').replace(/\/*$/, '')}`;
+  try {
+    const url = new URL(ensuredScheme);
+    const protocol = url.protocol.toLowerCase();
+    const hostname = url.hostname.toLowerCase();
+    const port = url.port ? `:${url.port}` : '';
+    return `${protocol}//${hostname}${port}`;
+  } catch (error) {
+    return ensuredScheme.replace(/\/*$/, '').toLowerCase();
+  }
 }
 
 function parseAllowedOrigins() {
@@ -53,11 +61,16 @@ function isOriginAllowed(origin) {
     return true; // Requests without origin header (e.g., curl) are allowed
   }
 
+  const normalizedOrigin = normalizeOrigin(origin);
+  if (!normalizedOrigin) {
+    return false;
+  }
+
   if (ALLOW_ALL) {
     return true;
   }
 
-  return ALLOWED_ORIGINS.includes(origin);
+  return ALLOWED_ORIGINS.includes(normalizedOrigin);
 }
 
 export function createCorsOptions() {
@@ -76,22 +89,30 @@ export function createCorsOptions() {
 }
 
 export function buildCorsHeaders(origin) {
-  if (!isOriginAllowed(origin)) {
+  let normalizedOrigin = origin ? normalizeOrigin(origin) : '';
+
+  if (normalizedOrigin && !isOriginAllowed(normalizedOrigin)) {
     return null;
   }
 
+  if (!normalizedOrigin && !ALLOW_ALL && ALLOWED_ORIGINS.length > 0) {
+    normalizedOrigin = ALLOWED_ORIGINS[0];
+  }
+
   let allowOriginHeader = '*';
-  if (origin) {
-    allowOriginHeader = ALLOW_ALL ? origin : origin;
+  if (normalizedOrigin) {
+    allowOriginHeader = normalizedOrigin;
   } else if (!ALLOW_ALL && ALLOWED_ORIGINS.length > 0) {
     allowOriginHeader = ALLOWED_ORIGINS[0];
   }
+
+  const allowCredentials = allowOriginHeader === '*' ? 'false' : 'true';
 
   const headers = {
     'Access-Control-Allow-Origin': allowOriginHeader,
     'Access-Control-Allow-Methods': DEFAULT_ALLOWED_METHODS.join(','),
     'Access-Control-Allow-Headers': DEFAULT_ALLOWED_HEADERS.join(','),
-    'Access-Control-Allow-Credentials': 'true'
+    'Access-Control-Allow-Credentials': allowCredentials
   };
 
   if (allowOriginHeader !== '*') {
@@ -104,3 +125,5 @@ export function buildCorsHeaders(origin) {
 export function getAllowedOrigins() {
   return [...ALLOWED_ORIGINS];
 }
+
+export { normalizeOrigin };
