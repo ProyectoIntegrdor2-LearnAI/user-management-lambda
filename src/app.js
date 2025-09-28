@@ -8,6 +8,7 @@ import { config, validateConfig } from './infrastructure/config/index.js';
 import { DIContainer } from './infrastructure/DIContainer.js';
 import { ExpressApplicationFactory } from './infrastructure/web/ExpressApplicationFactory.js';
 import pool from './infrastructure/database/connection.js';
+import { buildCorsHeaders } from './infrastructure/web/cors/corsConfig.js';
 
 // Global DI Container instance
 let diContainer;
@@ -92,11 +93,27 @@ async function getDatabaseHealth() {
  * Lambda Handler for AWS Lambda deployment
  */
 export const handler = async (event, context) => {
+  const requestOrigin = event?.headers?.origin || event?.headers?.Origin;
+  const corsHeaders = buildCorsHeaders(requestOrigin);
+
+  if (!corsHeaders) {
+    console.warn('Blocked request from disallowed origin', requestOrigin);
+    return {
+      statusCode: 403,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': 'null'
+      },
+      body: JSON.stringify({
+        success: false,
+        message: 'Origin not allowed'
+      })
+    };
+  }
+
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': process.env.CORS_ORIGIN || '*',
-    'Access-Control-Allow-Headers': 'Content-Type,Authorization',
-    'Access-Control-Allow-Methods': 'GET,POST,PUT,DELETE,OPTIONS'
+    ...corsHeaders
   };
 
   try {
@@ -143,7 +160,37 @@ export const handler = async (event, context) => {
     }
 
     const proxy = await getServerlessProxy();
-    return proxy(event, context);
+    const response = await proxy(event, context);
+
+    if (!response.headers) {
+      response.headers = {};
+    }
+
+    Object.entries(corsHeaders).forEach(([key, value]) => {
+      if (key === 'Vary' && response.headers[key]) {
+        const varyValues = new Set(
+          response.headers[key]
+            .split(',')
+            .map(val => val.trim())
+            .filter(Boolean)
+        );
+        if (value) {
+          value
+            .split(',')
+            .map(val => val.trim())
+            .filter(Boolean)
+            .forEach(val => varyValues.add(val));
+        }
+        response.headers[key] = Array.from(varyValues).join(', ');
+        return;
+      }
+
+      if (!response.headers[key]) {
+        response.headers[key] = value;
+      }
+    });
+
+    return response;
     
   } catch (error) {
     console.error('Lambda execution error:', error);

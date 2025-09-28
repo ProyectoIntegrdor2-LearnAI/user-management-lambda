@@ -5,6 +5,7 @@
 
 import express from 'express';
 import cors from 'cors';
+import { createCorsOptions } from './cors/corsConfig.js';
 import { createAuthRoutes, createUserRoutes } from './routes/index.js';
 
 export class ExpressApplicationFactory {
@@ -32,11 +33,9 @@ export class ExpressApplicationFactory {
 
   _configureBasicMiddleware(app) {
     // CORS configuration
-    app.use(cors({
-      origin: process.env.CORS_ORIGIN?.split(',') || ['*'],
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-    }));
+    const corsOptions = createCorsOptions();
+    app.use(cors(corsOptions));
+    app.options('*', cors(corsOptions));
 
     // JSON parsing
     app.use(express.json({ limit: '10mb' }));
