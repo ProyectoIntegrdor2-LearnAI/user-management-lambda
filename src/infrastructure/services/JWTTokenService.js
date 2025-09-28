@@ -49,10 +49,14 @@ export class JWTTokenService {
       return jwt.verify(token, this.secretKey, verifyOptions);
     } catch (error) {
       if (error.name === 'JsonWebTokenError') {
-        throw new Error('INVALID_TOKEN');
+        const invalidTokenError = new Error('Token inválido');
+        invalidTokenError.name = 'JsonWebTokenError';
+        throw invalidTokenError;
       }
       if (error.name === 'TokenExpiredError') {
-        throw new Error('TOKEN_EXPIRED');
+        const expiredTokenError = new Error('Token expirado');
+        expiredTokenError.name = 'TokenExpiredError';
+        throw expiredTokenError;
       }
       throw error;
     }
