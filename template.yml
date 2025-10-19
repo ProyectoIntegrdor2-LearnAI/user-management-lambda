@@ -46,7 +46,7 @@ Globals:
     Cors:
       AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
       AllowHeaders: "'Content-Type,Authorization,X-Requested-With,Accept,Origin,X-Amz-Date,X-Amz-Security-Token,X-Amz-User-Agent'"
-      AllowOrigin: !Ref CorsOrigin
+      AllowOrigin: !Sub "'${CorsOrigin}'"
       AllowCredentials: true
 
 Resources:
