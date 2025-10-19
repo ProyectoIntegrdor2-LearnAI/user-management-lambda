@@ -273,8 +273,8 @@ export class PostgreSQLLearningPathRepository extends LearningPathRepository {
                   WHEN EXISTS (
                     SELECT 1 FROM course_progress
                     WHERE path_id = $1 AND status = 'in_progress'
-                  ) THEN 'in_progress'
-                  ELSE status
+                  ) THEN 'active'
+                  ELSE 'active'
                 END
             END,
             completed_at = CASE
