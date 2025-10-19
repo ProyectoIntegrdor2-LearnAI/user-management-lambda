@@ -5,6 +5,7 @@
 
 export { AuthWebController } from './controllers/AuthWebController.js';
 export { ProfileWebController } from './controllers/ProfileWebController.js';
+export { LearningPathWebController } from './controllers/LearningPathWebController.js';
 
 export { 
   AuthenticationMiddleware,
@@ -16,7 +17,8 @@ export {
 export {
   createAuthRoutes,
   createProfileRoutes,
-  createUserRoutes
+  createUserRoutes,
+  createLearningPathRoutes
 } from './routes/index.js';
 
 export { WebControllersFactory } from './WebControllersFactory.js';

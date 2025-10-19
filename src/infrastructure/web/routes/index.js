@@ -6,3 +6,4 @@
 export { createAuthRoutes } from './authRoutes.js';
 export { createProfileRoutes } from './profileRoutes.js';
 export { createUserRoutes } from './userRoutes.js';
+export { createLearningPathRoutes } from './learningPathRoutes.js';

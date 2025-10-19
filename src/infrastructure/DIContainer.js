@@ -13,11 +13,16 @@ import { LoginUserUseCase } from '../application/use-cases/LoginUserUseCase.js';
 import { LogoutUserUseCase } from '../application/use-cases/LogoutUserUseCase.js';
 import { GetUserProfileUseCase } from '../application/use-cases/GetUserProfileUseCase.js';
 import { UpdateUserProfileUseCase } from '../application/use-cases/UpdateUserProfileUseCase.js';
+import { GetUserLearningPathsUseCase } from '../application/use-cases/GetUserLearningPathsUseCase.js';
+import { GetLearningPathDetailUseCase } from '../application/use-cases/GetLearningPathDetailUseCase.js';
+import { UpdateCourseProgressUseCase } from '../application/use-cases/UpdateCourseProgressUseCase.js';
+import { GetUserLearningProgressUseCase } from '../application/use-cases/GetUserLearningProgressUseCase.js';
 
 // Infrastructure
 import dbPool from './database/connection.js';
 import { PostgreSQLUserRepository } from './persistence/PostgreSQLUserRepository.js';
 import { PostgreSQLUserSessionRepository } from './persistence/PostgreSQLUserSessionRepository.js';
+import { PostgreSQLLearningPathRepository } from './persistence/PostgreSQLLearningPathRepository.js';
 
 // Services
 import { BcryptPasswordService } from './services/BcryptPasswordService.js';
@@ -27,6 +32,7 @@ import { JWTTokenService } from './services/JWTTokenService.js';
 import {
   AuthWebController,
   ProfileWebController,
+  LearningPathWebController,
   AuthenticationMiddleware,
   ValidationMiddleware,
   ErrorHandlerMiddleware,
@@ -49,8 +55,10 @@ export class DIContainer {
   // Initialize repositories
   const userRepository = new PostgreSQLUserRepository();
   const userSessionRepository = new PostgreSQLUserSessionRepository();
+  const learningPathRepository = new PostgreSQLLearningPathRepository();
       this._services.set('userRepository', userRepository);
       this._services.set('userSessionRepository', userSessionRepository);
+      this._services.set('learningPathRepository', learningPathRepository);
 
       // Initialize services
       const passwordService = new BcryptPasswordService();
@@ -85,11 +93,20 @@ export class DIContainer {
         passwordService
       );
 
+      const getUserLearningPathsUseCase = new GetUserLearningPathsUseCase(learningPathRepository);
+      const getLearningPathDetailUseCase = new GetLearningPathDetailUseCase(learningPathRepository);
+      const updateCourseProgressUseCase = new UpdateCourseProgressUseCase(learningPathRepository);
+      const getUserLearningProgressUseCase = new GetUserLearningProgressUseCase(learningPathRepository);
+
       this._services.set('registerUserUseCase', registerUserUseCase);
       this._services.set('loginUserUseCase', loginUserUseCase);
       this._services.set('logoutUserUseCase', logoutUserUseCase);
       this._services.set('getUserProfileUseCase', getUserProfileUseCase);
       this._services.set('updateUserProfileUseCase', updateUserProfileUseCase);
+      this._services.set('getUserLearningPathsUseCase', getUserLearningPathsUseCase);
+      this._services.set('getLearningPathDetailUseCase', getLearningPathDetailUseCase);
+      this._services.set('updateCourseProgressUseCase', updateCourseProgressUseCase);
+      this._services.set('getUserLearningProgressUseCase', getUserLearningProgressUseCase);
 
       // Initialize web controllers
       const authWebController = new AuthWebController(
@@ -100,11 +117,19 @@ export class DIContainer {
 
       const profileWebController = new ProfileWebController(
         getUserProfileUseCase,
-        updateUserProfileUseCase
+        updateUserProfileUseCase,
+        getUserLearningProgressUseCase
       );
+
+      const learningPathWebController = new LearningPathWebController({
+        getUserLearningPathsUseCase,
+        getLearningPathDetailUseCase,
+        updateCourseProgressUseCase,
+      });
 
       this._services.set('authWebController', authWebController);
       this._services.set('profileWebController', profileWebController);
+      this._services.set('learningPathWebController', learningPathWebController);
 
       // Initialize middlewares
       const authenticationMiddleware = new AuthenticationMiddleware(

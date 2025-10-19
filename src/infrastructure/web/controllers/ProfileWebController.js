@@ -6,10 +6,12 @@
 export class ProfileWebController {
   constructor(
     getUserProfileUseCase,
-    updateUserProfileUseCase
+    updateUserProfileUseCase,
+    getUserLearningProgressUseCase
   ) {
     this.getUserProfileUseCase = getUserProfileUseCase;
     this.updateUserProfileUseCase = updateUserProfileUseCase;
+    this.getUserLearningProgressUseCase = getUserLearningProgressUseCase;
   }
 
   /**
@@ -95,19 +97,11 @@ export class ProfileWebController {
         });
       }
 
-      return res.status(200).json({
-        success: true,
-        message: 'Progreso obtenido exitosamente',
-        data: {
-          progress: {
-            completedCourses: 0,
-            totalCourses: 0,
-            consecutiveDays: 0,
-            totalHours: 0,
-            level: 'Sin datos'
-          }
-        }
+      const result = await this.getUserLearningProgressUseCase.execute({
+        user_id: targetUserId
       });
+
+      return res.status(200).json(result);
     } catch (error) {
       next(error);
     }

@@ -10,13 +10,15 @@ export class WebControllersFactory {
     loginUserUseCase,
     logoutUserUseCase,
     getUserProfileUseCase,
-    updateUserProfileUseCase
+    updateUserProfileUseCase,
+    getUserLearningProgressUseCase,
   }) {
     this.registerUserUseCase = registerUserUseCase;
     this.loginUserUseCase = loginUserUseCase;
     this.logoutUserUseCase = logoutUserUseCase;
     this.getUserProfileUseCase = getUserProfileUseCase;
     this.updateUserProfileUseCase = updateUserProfileUseCase;
+    this.getUserLearningProgressUseCase = getUserLearningProgressUseCase;
   }
 
   createAuthWebController() {
@@ -34,7 +36,8 @@ export class WebControllersFactory {
     
     return new ProfileWebController(
       this.getUserProfileUseCase,
-      this.updateUserProfileUseCase
+      this.updateUserProfileUseCase,
+      this.getUserLearningProgressUseCase
     );
   }
 }

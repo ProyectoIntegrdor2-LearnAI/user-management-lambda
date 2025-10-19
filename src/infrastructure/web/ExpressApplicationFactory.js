@@ -11,7 +11,7 @@ import {
   getAllowedOrigins,
   normalizeOrigin
 } from './cors/corsConfig.js';
-import { createAuthRoutes, createUserRoutes } from './routes/index.js';
+import { createAuthRoutes, createUserRoutes, createLearningPathRoutes } from './routes/index.js';
 
 export class ExpressApplicationFactory {
   constructor(diContainer) {
@@ -138,6 +138,11 @@ export class ExpressApplicationFactory {
             'GET /users/:id',
             'PUT /users/:id/profile',
             'GET /users/:id/dashboard'
+          ],
+          learning_paths: [
+            'GET /learning-paths',
+            'GET /learning-paths/:pathId',
+            'PATCH /learning-paths/:pathId/courses/:courseId'
           ]
         }
       });
@@ -150,6 +155,7 @@ export class ExpressApplicationFactory {
     const profileWebController = this.diContainer.get('profileWebController');
     const authenticationMiddleware = this.diContainer.get('authenticationMiddleware');
     const validationMiddleware = this.diContainer.get('validationMiddleware');
+    const learningPathWebController = this.diContainer.get('learningPathWebController');
 
     // Create routes with dependencies
     const authRoutes = createAuthRoutes({
@@ -164,13 +170,20 @@ export class ExpressApplicationFactory {
       validationMiddleware
     });
 
+    const learningPathRoutes = createLearningPathRoutes({
+      learningPathWebController,
+      authenticationMiddleware,
+    });
+
     // Mount routes
     app.use('/auth', authRoutes);
     app.use('/users', userRoutes);
+    app.use('/learning-paths', learningPathRoutes);
     
     // Mount routes with API prefix
     app.use('/api/auth', authRoutes);
     app.use('/api/users', userRoutes);
+    app.use('/api/learning-paths', learningPathRoutes);
   }
 
   _configureErrorHandling(app) {
