@@ -210,36 +210,36 @@ export class PostgreSQLLearningPathRepository extends LearningPathRepository {
         `
           UPDATE course_progress
           SET
-            status = $4,
-            progress_percentage = $5,
-            time_invested_minutes = COALESCE($6, time_invested_minutes),
-            user_rating = COALESCE($7, user_rating),
-            personal_notes = COALESCE($8, personal_notes),
+            status = $4::text,
+            progress_percentage = $5::numeric,
+            time_invested_minutes = COALESCE($6::integer, time_invested_minutes),
+            user_rating = COALESCE($7::numeric, user_rating),
+            personal_notes = COALESCE($8::text, personal_notes),
             dependencies_completed = CASE
-              WHEN $4 = 'completed' THEN TRUE
+              WHEN $4::text = 'completed' THEN TRUE
               ELSE dependencies_completed
             END,
             started_at = CASE
-              WHEN $4 IN ('in_progress', 'completed') AND started_at IS NULL THEN NOW()
-              WHEN $4 = 'not_started' THEN NULL
+              WHEN $4::text IN ('in_progress', 'completed') AND started_at IS NULL THEN NOW()
+              WHEN $4::text = 'not_started' THEN NULL
               ELSE started_at
             END,
             completed_at = CASE
-              WHEN $4 = 'completed' THEN NOW()
-              WHEN $4 IN ('not_started', 'in_progress') THEN NULL
+              WHEN $4::text = 'completed' THEN NOW()
+              WHEN $4::text IN ('not_started', 'in_progress') THEN NULL
               ELSE completed_at
             END,
             last_activity = NOW(),
             updated_at = NOW()
-          WHERE user_id = $1
-            AND path_id = $2
-            AND mongodb_course_id = $3
+          WHERE user_id = $1::uuid
+            AND path_id = $2::uuid
+            AND mongodb_course_id = $3::text
           RETURNING *
         `,
         [
           userId,
           pathId,
-          courseId,
+          String(courseId),
           normalizedStatus,
           normalizedPercentage,
           timeInvestedMinutes,
