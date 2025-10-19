@@ -14,7 +14,7 @@ Parameters:
     NoEcho: true
   CorsOrigin:
     Type: String
-    Default: "*"
+    Default: "https://www.learn-ia.app"
   VpcSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Subnets privados donde correrá la Lambda
@@ -214,6 +214,26 @@ Resources:
           Properties:
             Path: /info
             Method: GET
+        LearningPathPublicList:
+          Type: Api
+          Properties:
+            Path: /learning-paths/public/list
+            Method: GET
+        LearningPathList:
+          Type: Api
+          Properties:
+            Path: /learning-paths
+            Method: GET
+        LearningPathGetOne:
+          Type: Api
+          Properties:
+            Path: /learning-paths/{pathId}
+            Method: GET
+        LearningPathUpdateCourse:
+          Type: Api
+          Properties:
+            Path: /learning-paths/{pathId}/courses/{courseId}
+            Method: PATCH
 
 Outputs:
   ApiUrl:
