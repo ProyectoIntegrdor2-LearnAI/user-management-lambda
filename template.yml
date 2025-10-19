@@ -14,7 +14,7 @@ Parameters:
     NoEcho: true
   CorsOrigin:
     Type: String
-    Default: "https://www.learn-ia.app"
+    Default: "https://www.learn-ia.app,https://learn-ia.app,http://localhost:3000"
   VpcSubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: Subnets privados donde correrá la Lambda
@@ -44,10 +44,11 @@ Globals:
         DB_CA_PATH: /opt/certs/rds-us-east-2-bundle.pem
   Api:
     Cors:
-      AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+      AllowMethods: "'GET,POST,PUT,DELETE,PATCH,OPTIONS'"
       AllowHeaders: "'Content-Type,Authorization,X-Requested-With,Accept,Origin,X-Amz-Date,X-Amz-Security-Token,X-Amz-User-Agent'"
-      AllowOrigin: !Sub "'${CorsOrigin}'"
-      AllowCredentials: true
+      AllowOrigin: "'*'"
+      AllowCredentials: false
+      MaxAge: "'3600'"
 
 Resources:
   RdsCaLayer:
