@@ -6,21 +6,21 @@
 export const config = {
   // Server Configuration
   server: {
-    port: parseInt(process.env.PORT) || 3000,
+    port: Number.parseInt(process.env.PORT) || 3000,
     environment: process.env.NODE_ENV || 'development'
   },
 
   // Database Configuration
   database: {
     host: process.env.DB_HOST || 'localhost',
-    port: parseInt(process.env.DB_PORT) || 5432,
+    port: Number.parseInt(process.env.DB_PORT) || 5432,
     name: process.env.DB_NAME || 'user_management',
     user: process.env.DB_USER || 'postgres',
     password: process.env.DB_PASSWORD || '',
     ssl: process.env.DB_SSL === 'true',
-    maxConnections: parseInt(process.env.DB_MAX_CONNECTIONS) || 20,
-    idleTimeoutMillis: parseInt(process.env.DB_IDLE_TIMEOUT) || 30000,
-    connectionTimeoutMillis: parseInt(process.env.DB_CONNECTION_TIMEOUT) || 2000
+    maxConnections: Number.parseInt(process.env.DB_MAX_CONNECTIONS) || 20,
+    idleTimeoutMillis: Number.parseInt(process.env.DB_IDLE_TIMEOUT) || 30000,
+    connectionTimeoutMillis: Number.parseInt(process.env.DB_CONNECTION_TIMEOUT) || 2000
   },
 
   // JWT Configuration
@@ -39,7 +39,7 @@ export const config = {
 
   // Security Configuration
   security: {
-    bcryptSaltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12,
+    bcryptSaltRounds: Number.parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12,
     maxRequestSize: process.env.MAX_REQUEST_SIZE || '10mb'
   },
 

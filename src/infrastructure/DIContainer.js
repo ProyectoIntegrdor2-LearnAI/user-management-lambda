@@ -4,8 +4,6 @@
  */
 
 // Domain
-import { User } from '../domain/entities/User.js';
-import { UserSession } from '../domain/entities/UserSession.js';
 
 // Application Use Cases
 import { RegisterUserUseCase } from '../application/use-cases/RegisterUserUseCase.js';

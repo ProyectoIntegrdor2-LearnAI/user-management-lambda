@@ -10,6 +10,15 @@ export class UpdateUserProfileUseCase {
   }
 
   async execute({ user_id, updates }) {
+    this._validateInput(user_id, updates);
+
+    const user = await this._getActiveUser(user_id);
+    const sanitizedUpdates = await this._sanitizeUpdates(updates, user);
+
+    return this._updateUser(user, sanitizedUpdates);
+  }
+
+  _validateInput(user_id, updates) {
     if (!user_id) {
       throw new Error('MISSING_USER_ID', {
         message: 'ID de usuario es obligatorio'
@@ -21,8 +30,9 @@ export class UpdateUserProfileUseCase {
         message: 'No se proporcionaron datos para actualizar'
       });
     }
+  }
 
-    // Buscar usuario existente
+  async _getActiveUser(user_id) {
     const user = await this.userRepository.findById(user_id);
     if (!user) {
       throw new Error('USER_NOT_FOUND', {
@@ -30,18 +40,20 @@ export class UpdateUserProfileUseCase {
       });
     }
 
-    // Verificar que la cuenta esté activa
     if (!user.isActive()) {
       throw new Error('ACCOUNT_SUSPENDED', {
         message: 'La cuenta está suspendida'
       });
     }
 
-    const sanitizedUpdates = { ...updates };
+    return user;
+  }
 
-    // Si se está actualizando el email, verificar que no exista
-    if (sanitizedUpdates.email && sanitizedUpdates.email !== user.email) {
-      const existingUser = await this.userRepository.findByEmail(sanitizedUpdates.email);
+  async _sanitizeUpdates(updates, user) {
+    const sanitized = { ...updates };
+
+    if (sanitized.email && sanitized.email !== user.email) {
+      const existingUser = await this.userRepository.findByEmail(sanitized.email);
       if (existingUser) {
         throw new Error('EMAIL_EXISTS', {
           message: 'El email ya está registrado'
@@ -49,40 +61,39 @@ export class UpdateUserProfileUseCase {
       }
     }
 
-    // Si se está actualizando la contraseña, hashearla
-    if (sanitizedUpdates.password) {
-      sanitizedUpdates.password_hash = await this.passwordService.hash(sanitizedUpdates.password);
-      delete sanitizedUpdates.password; // No almacenar la contraseña en texto plano
+    if (sanitized.password) {
+      sanitized.password_hash = await this.passwordService.hash(sanitized.password);
+      delete sanitized.password;
     }
 
-    try {
-      // Actualizar usuario usando los métodos del dominio
-      if (sanitizedUpdates.name) user.updateName(sanitizedUpdates.name);
-      if (sanitizedUpdates.email) user.updateEmail(sanitizedUpdates.email);
-      if (sanitizedUpdates.password_hash) user.updatePasswordHash(sanitizedUpdates.password_hash);
-      if (sanitizedUpdates.phone !== undefined) user.updatePhone(sanitizedUpdates.phone);
-      if (sanitizedUpdates.address !== undefined) user.updateAddress(sanitizedUpdates.address);
+    return sanitized;
+  }
 
-      // Guardar en el repositorio
+  async _updateUser(user, updates) {
+    try {
+      this._applyDomainUpdates(user, updates);
       const updatedUser = await this.userRepository.update(user);
 
       return {
         success: true,
         message: 'Perfil actualizado exitosamente',
-        data: {
-          user: updatedUser.toPublicData()
-        }
+        data: { user: updatedUser.toPublicData() }
       };
 
     } catch (error) {
-      if (error.code) {
-        throw error;
-      }
-
+      if (error.code) throw error;
       throw new Error('UPDATE_ERROR', {
         message: 'Error al actualizar el perfil',
         details: error.message
       });
     }
+  }
+
+  _applyDomainUpdates(user, updates) {
+    if (updates.name) user.updateName(updates.name);
+    if (updates.email) user.updateEmail(updates.email);
+    if (updates.password_hash) user.updatePasswordHash(updates.password_hash);
+    if (updates.phone !== undefined) user.updatePhone(updates.phone);
+    if (updates.address !== undefined) user.updateAddress(updates.address);
   }
 }

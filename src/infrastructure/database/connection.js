@@ -3,19 +3,21 @@
  * Configuración de conexión a PostgreSQL
  */
 
-import fs from 'fs';
+import fs from 'node:fs';
 import { Pool } from 'pg';
 
 const caPath = process.env.DB_CA_PATH;
 console.log('DB_CA_PATH =', caPath);
+
 try {
   const pathToCheck = caPath || '';
   const exists = fs.existsSync(pathToCheck);
   console.log('CA exists?', exists);
+
   if (exists) {
     const fileBuffer = fs.readFileSync(pathToCheck);
     const bytes = fileBuffer.length;
-    const head = fileBuffer.toString('utf8').slice(0, 100).replace(/\n/g, '\\n');
+    const head = fileBuffer.toString('utf8').slice(0, 100).replaceAll('\n', String.raw`\n`);
     console.log('CA bytes:', bytes, 'HEAD:', head);
   }
 } catch (error) {

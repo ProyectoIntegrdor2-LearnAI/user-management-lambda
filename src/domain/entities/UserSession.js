@@ -60,7 +60,7 @@ export class UserSession {
   // Validaciones
   static parseDuration(duration = '24h') {
     if (typeof duration === 'string' && duration.includes('h')) {
-      return parseInt(duration.replace('h', ''));
+      return Number.parseInt(duration.replace('h', ''));
     }
     return typeof duration === 'number' ? duration : 24;
   }

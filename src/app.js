@@ -231,13 +231,19 @@ export const handler = async (event, context) => {
 };
 
 /**
- * Local Development Server
+ * Export app for testing purposes
  */
-async function startLocalServer() {
+export const createApp = initializeApplication;
+
+/**
+ * Start server if this module is executed directly
+ * ✅ Refactor: Using Top-Level Await (SonarQube compliant)
+ */
+if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     const app = await initializeApplication();
     const PORT = config.server.port;
-    
+
     const server = app.listen(PORT, () => {
       console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
       console.log('🚀 LearnIA User Management API (Hexagonal)');
@@ -252,14 +258,11 @@ async function startLocalServer() {
     // Graceful shutdown
     const gracefulShutdown = async (signal) => {
       console.log(`\n🛑 ${signal} received. Starting graceful shutdown...`);
-      
       server.close(async () => {
         console.log('📡 HTTP server closed');
-        
         if (diContainer) {
           await diContainer.cleanup();
         }
-        
         console.log('✅ Graceful shutdown completed');
         process.exit(0);
       });
@@ -271,26 +274,11 @@ async function startLocalServer() {
       }, 30000);
     };
 
-    // Listen for termination signals
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
-    return server;
-    
   } catch (error) {
     console.error('❌ Failed to start local server:', error);
     process.exit(1);
   }
-}
-
-/**
- * Export app for testing purposes
- */
-export const createApp = initializeApplication;
-
-/**
- * Start server if this module is executed directly
- */
-if (import.meta.url === `file://${process.argv[1]}`) {
-  startLocalServer();
 }
