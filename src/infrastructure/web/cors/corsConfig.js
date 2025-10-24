@@ -25,18 +25,19 @@ function normalizeOrigin(origin) {
     return trimmed;
   }
 
-  const sanitized = trimmed.replace(/\s+/g, '');
+  const sanitized = trimmed.replaceAll(/\s+/g, '');
   const ensuredScheme = /^https?:\/\//i.test(sanitized)
     ? sanitized
     : `https://${sanitized.replace(/^\/*/, '')}`;
 
   try {
-    const url = new URL(ensuredScheme);
-    const protocol = url.protocol.toLowerCase();
-    const hostname = url.hostname.toLowerCase();
-    const port = url.port ? `:${url.port}` : '';
-    return `${protocol}//${hostname}${port}`;
+  const url = new URL(ensuredScheme);
+  const protocol = url.protocol.toLowerCase();
+  const hostname = url.hostname.toLowerCase();
+  const port = url.port ? `:${url.port}` : '';
+  return `${protocol}//${hostname}${port}`;
   } catch (error) {
+    console.warn(`⚠️ Invalid URL passed to normalizeOrigin: "${ensuredScheme}"`, error.message);
     return ensuredScheme.replace(/\/*$/, '').toLowerCase();
   }
 }

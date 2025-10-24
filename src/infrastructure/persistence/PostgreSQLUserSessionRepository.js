@@ -235,7 +235,7 @@ export class PostgreSQLUserSessionRepository extends UserSessionRepository {
         WHERE user_id = $1 AND is_active = true AND expires_at > NOW()
       `;
       const result = await pool.query(query, [user_id]);
-      return parseInt(result.rows[0].count);
+      return Number.parseInt(result.rows[0].count);
     } catch (error) {
       console.error('Error counting active sessions:', error);
       throw error;

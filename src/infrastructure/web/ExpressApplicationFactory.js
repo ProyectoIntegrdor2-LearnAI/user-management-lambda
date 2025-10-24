@@ -37,26 +37,30 @@ export class ExpressApplicationFactory {
   }
 
   _configureBasicMiddleware(app) {
-    const isLambdaEnv = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
-    const enableInternalCors = process.env.ENABLE_INTERNAL_CORS !== 'false' && !isLambdaEnv;
+  const isLambdaEnv = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const enableInternalCors = process.env.ENABLE_INTERNAL_CORS !== 'false' && !isLambdaEnv;
 
-    const allowedOrigins = getAllowedOrigins().filter(origin => origin !== '*');
-    const fallbackOriginCandidate = process.env.DEFAULT_ALLOW_ORIGIN || allowedOrigins[0] || 'https://www.learn-ia.app';
-    const fallbackOrigin = normalizeOrigin(fallbackOriginCandidate);
+  // ✅ Use `.find()` instead of `.filter()` since only the first non-* origin is needed
+  const firstAllowedOrigin = getAllowedOrigins().find(origin => origin !== '*');
 
-    const applyCorsHeaders = (req, res) => {
-      const requestOrigin = req.headers.origin || req.headers.Origin;
-      const corsHeaders = buildCorsHeaders(requestOrigin) || buildCorsHeaders(fallbackOrigin);
-      if (!corsHeaders) {
-        return;
+  const fallbackOriginCandidate =
+    process.env.DEFAULT_ALLOW_ORIGIN || firstAllowedOrigin || 'https://www.learn-ia.app';
+
+  const fallbackOrigin = normalizeOrigin(fallbackOriginCandidate);
+
+  const applyCorsHeaders = (req, res) => {
+    const requestOrigin = req.headers.origin || req.headers.Origin;
+    const corsHeaders = buildCorsHeaders(requestOrigin) || buildCorsHeaders(fallbackOrigin);
+    if (!corsHeaders) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      if (value !== undefined) {
+        res.setHeader(key, value);
       }
-
-      Object.entries(corsHeaders)
-        .filter(([, value]) => typeof value !== 'undefined')
-        .forEach(([key, value]) => {
-          res.setHeader(key, value);
-        });
-    };
+    }
+  };
 
     app.use((req, res, next) => {
       applyCorsHeaders(req, res);

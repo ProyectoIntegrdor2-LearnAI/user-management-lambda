@@ -4,7 +4,7 @@
  */
 
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
+import crypto from 'node:crypto';
 
 export class JWTTokenService {
   constructor(secretKey, options = {}) {

@@ -149,21 +149,22 @@ export class PostgreSQLUserRepository extends UserRepository {
   }
 
   async existsByEmail(email) {
-    try {
-      const query = 'SELECT COUNT(*) as count FROM users WHERE email = $1';
-      const result = await pool.query(query, [email]);
-      return parseInt(result.rows[0].count) > 0;
-    } catch (error) {
-      console.error('Error checking if email exists:', error);
-      throw error;
-    }
+  try {
+    const query = 'SELECT COUNT(*) as count FROM users WHERE email = $1';
+    const result = await pool.query(query, [email]);
+    return Number.parseInt(result.rows[0].count, 10) > 0;
+  } catch (error) {
+    console.error('Error checking if email exists:', error);
+    throw error;
   }
+}
+
 
   async existsByIdentification(identification) {
     try {
       const query = 'SELECT COUNT(*) as count FROM users WHERE identification = $1';
       const result = await pool.query(query, [identification]);
-      return parseInt(result.rows[0].count) > 0;
+      return Number.parseInt(result.rows[0].count) > 0;
     } catch (error) {
       console.error('Error checking if identification exists:', error);
       throw error;

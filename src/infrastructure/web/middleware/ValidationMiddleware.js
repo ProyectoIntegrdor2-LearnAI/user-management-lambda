@@ -7,6 +7,72 @@ import { ValidationError } from '../../../shared/errors/ValidationError.js';
 
 const OPTIONAL_FIELDS = ['phone', 'address'];
 
+/* ============================================================
+ * FUNCIONES AUXILIARES (scope superior)
+ * ============================================================ */
+
+function validateName(name, errors, sanitized) {
+  if (name === undefined) return;
+  const trimmed = typeof name === 'string' ? name.trim() : name;
+  if (!trimmed || trimmed.length < 2) {
+    errors.push('El nombre debe tener al menos 2 caracteres');
+  } else {
+    sanitized.name = trimmed;
+  }
+}
+
+function validateEmail(email, errors, sanitized) {
+  if (email === undefined) return;
+  const trimmed = typeof email === 'string' ? email.trim() : email;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!trimmed || !emailRegex.test(trimmed)) {
+    errors.push('El email debe tener un formato válido');
+  } else {
+    sanitized.email = trimmed;
+  }
+}
+
+function validatePassword(password, errors, sanitized) {
+  if (password === undefined) return;
+  if (!password || password.length < 8) {
+    errors.push('La contraseña debe tener al menos 8 caracteres');
+  } else {
+    sanitized.password = password;
+  }
+}
+
+function validatePhone(phone, errors, sanitized) {
+  if (phone === undefined) return;
+  if (phone === null || phone === '') {
+    sanitized.phone = null;
+  } else {
+    // ✅ Regex sin escapes innecesarios
+    const phoneRegex = /^[+]?[\d\s\-()]{10,}$/;
+    if (phoneRegex.test(phone)) {
+      sanitized.phone = phone;
+      return;
+    }
+
+    errors.push('El teléfono debe tener un formato válido');
+
+  }
+}
+
+function validateAddress(address, errors, sanitized) {
+  if (address === undefined) return;
+  if (address === null || address === '') {
+    sanitized.address = null;
+  } else if (typeof address === 'string') {
+    sanitized.address = address.trim();
+  } else {
+    sanitized.address = address;
+  }
+}
+
+/* ============================================================
+ * CLASE PRINCIPAL
+ * ============================================================ */
+
 export class ValidationMiddleware {
   /**
    * Middleware genérico de validación usando esquemas
@@ -45,31 +111,41 @@ export class ValidationMiddleware {
       const name = typeof rawName === 'string' ? rawName.trim() : rawName;
       const email = typeof rawEmail === 'string' ? rawEmail.trim() : rawEmail;
       const identification = rawIdentification?.toString().trim();
-      const password = typeof rawPassword === 'string' ? rawPassword : rawPassword;
+      const password = rawPassword;
 
-      if (!identification) {
-        missing.push('identification');
-      }
+      if (!identification) missing.push('identification');
 
       if (!name) {
         missing.push('name');
       } else if (name.length < 2) {
-        invalid.push({ field: 'name', rule: 'minLength', message: 'El nombre debe tener al menos 2 caracteres' });
+        invalid.push({
+          field: 'name',
+          rule: 'minLength',
+          message: 'El nombre debe tener al menos 2 caracteres'
+        });
       }
 
-      if (!email) {
-        missing.push('email');
-      } else {
+      if (email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-          invalid.push({ field: 'email', rule: 'format', message: 'El email debe tener un formato válido' });
+          invalid.push({
+            field: 'email',
+            rule: 'format',
+            message: 'El email debe tener un formato válido'
+          });
         }
+      } else {
+        missing.push('email');
       }
 
       if (!password) {
         missing.push('password');
       } else if (password.length < 8) {
-        invalid.push({ field: 'password', rule: 'minLength', message: 'La contraseña debe tener al menos 8 caracteres' });
+        invalid.push({
+          field: 'password',
+          rule: 'minLength',
+          message: 'La contraseña debe tener al menos 8 caracteres'
+        });
       }
 
       if (missing.length > 0 || invalid.length > 0) {
@@ -88,7 +164,7 @@ export class ValidationMiddleware {
       }, {});
 
       req.validated = {
-        ...(req.validated || {}),
+        ...req.validated,
         body: {
           name,
           email,
@@ -111,13 +187,8 @@ export class ValidationMiddleware {
       const { email, password } = req.body;
       const errors = [];
 
-      if (!email) {
-        errors.push('Email es obligatorio');
-      }
-
-      if (!password) {
-        errors.push('Contraseña es obligatoria');
-      }
+      if (!email) errors.push('Email es obligatorio');
+      if (!password) errors.push('Contraseña es obligatoria');
 
       if (errors.length > 0) {
         return res.status(400).json({
@@ -140,55 +211,11 @@ export class ValidationMiddleware {
       const errors = [];
       const sanitized = {};
 
-      if (name !== undefined) {
-        const trimmed = typeof name === 'string' ? name.trim() : name;
-        if (!trimmed || trimmed.length < 2) {
-          errors.push('El nombre debe tener al menos 2 caracteres');
-        } else {
-          sanitized.name = trimmed;
-        }
-      }
-
-      if (email !== undefined) {
-        const trimmed = typeof email === 'string' ? email.trim() : email;
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!trimmed || !emailRegex.test(trimmed)) {
-          errors.push('El email debe tener un formato válido');
-        } else {
-          sanitized.email = trimmed;
-        }
-      }
-
-      if (password !== undefined) {
-        if (!password || password.length < 8) {
-          errors.push('La contraseña debe tener al menos 8 caracteres');
-        } else {
-          sanitized.password = password;
-        }
-      }
-
-      if (phone !== undefined) {
-        if (phone === null || phone === '') {
-          sanitized.phone = null;
-        } else {
-          const phoneRegex = /^[+]?[\d\s\-\(\)]{10,}$/;
-          if (!phoneRegex.test(phone)) {
-            errors.push('El teléfono debe tener un formato válido');
-          } else {
-            sanitized.phone = phone;
-          }
-        }
-      }
-
-      if (address !== undefined) {
-        if (address === null || address === '') {
-          sanitized.address = null;
-        } else if (typeof address === 'string') {
-          sanitized.address = address.trim();
-        } else {
-          sanitized.address = address;
-        }
-      }
+      validateName(name, errors, sanitized);
+      validateEmail(email, errors, sanitized);
+      validatePassword(password, errors, sanitized);
+      validatePhone(phone, errors, sanitized);
+      validateAddress(address, errors, sanitized);
 
       if (errors.length > 0) {
         return res.status(400).json({
@@ -200,7 +227,7 @@ export class ValidationMiddleware {
 
       if (Object.keys(sanitized).length > 0) {
         req.validated = {
-          ...(req.validated || {}),
+          ...req.validated,
           body: sanitized
         };
       }
