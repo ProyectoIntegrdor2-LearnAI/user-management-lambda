@@ -222,7 +222,7 @@ export class PostgreSQLLearningPathRepository extends LearningPathRepository {
               ELSE dependencies_completed
             END,
             started_at = CASE
-              WHEN $4::text IN ('in_progress', 'completed', 'skipped') AND started_at IS NULL THEN NOW()
+              WHEN $4::text IN ('in_progress', 'completed', 'skipped') AND started_at IS NULL THEN NOW() - INTERVAL '1 second'
               WHEN $4::text = 'not_started' THEN NULL
               ELSE started_at
             END,
