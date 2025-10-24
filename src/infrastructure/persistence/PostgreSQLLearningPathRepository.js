@@ -216,11 +216,11 @@ export class PostgreSQLLearningPathRepository extends LearningPathRepository {
             user_rating = COALESCE($7::numeric, user_rating),
             personal_notes = COALESCE($8::text, personal_notes),
             dependencies_completed = CASE
-              WHEN $4::text = 'completed' THEN TRUE
+              WHEN $4::text IN ('completed', 'skipped') THEN TRUE
               ELSE dependencies_completed
             END,
             started_at = CASE
-              WHEN $4::text IN ('in_progress', 'completed') AND started_at IS NULL THEN NOW()
+              WHEN $4::text IN ('in_progress', 'completed', 'skipped') AND started_at IS NULL THEN NOW()
               WHEN $4::text = 'not_started' THEN NULL
               ELSE started_at
             END,
