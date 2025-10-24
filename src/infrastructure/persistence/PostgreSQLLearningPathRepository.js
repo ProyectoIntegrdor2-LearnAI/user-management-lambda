@@ -195,6 +195,8 @@ export class PostgreSQLLearningPathRepository extends LearningPathRepository {
     if (normalizedPercentage == null) {
       if (normalizedStatus === 'completed') {
         normalizedPercentage = 100;
+      } else if (normalizedStatus === 'skipped') {
+        normalizedPercentage = 100;
       } else if (normalizedStatus === 'not_started') {
         normalizedPercentage = 0;
       }
@@ -225,7 +227,7 @@ export class PostgreSQLLearningPathRepository extends LearningPathRepository {
               ELSE started_at
             END,
             completed_at = CASE
-              WHEN $4::text = 'completed' THEN NOW()
+              WHEN $4::text IN ('completed', 'skipped') THEN NOW()
               WHEN $4::text IN ('not_started', 'in_progress') THEN NULL
               ELSE completed_at
             END,
