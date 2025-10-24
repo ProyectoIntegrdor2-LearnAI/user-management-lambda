@@ -4,8 +4,6 @@
  */
 
 // Domain
-import { User } from '../domain/entities/User.js';
-import { UserSession } from '../domain/entities/UserSession.js';
 
 // Application Use Cases
 import { RegisterUserUseCase } from '../application/use-cases/RegisterUserUseCase.js';
@@ -15,9 +13,9 @@ import { GetUserProfileUseCase } from '../application/use-cases/GetUserProfileUs
 import { UpdateUserProfileUseCase } from '../application/use-cases/UpdateUserProfileUseCase.js';
 
 // Infrastructure
-import { DatabaseConnection } from './database/connection.js';
-import { PostgreSQLUserRepository } from './database/repositories/PostgreSQLUserRepository.js';
-import { PostgreSQLUserSessionRepository } from './database/repositories/PostgreSQLUserSessionRepository.js';
+import dbPool from './database/connection.js';
+import { PostgreSQLUserRepository } from './persistence/PostgreSQLUserRepository.js';
+import { PostgreSQLUserSessionRepository } from './persistence/PostgreSQLUserSessionRepository.js';
 
 // Services
 import { BcryptPasswordService } from './services/BcryptPasswordService.js';
@@ -43,14 +41,12 @@ export class DIContainer {
     if (this._initialized) return;
 
     try {
-      // Initialize database connection
-      const dbConnection = new DatabaseConnection();
-      await dbConnection.connect();
-      this._services.set('dbConnection', dbConnection);
+  // Register database pool (connection is managed internally)
+  this._services.set('dbPool', dbPool);
 
-      // Initialize repositories
-      const userRepository = new PostgreSQLUserRepository(dbConnection);
-      const userSessionRepository = new PostgreSQLUserSessionRepository(dbConnection);
+  // Initialize repositories
+  const userRepository = new PostgreSQLUserRepository();
+  const userSessionRepository = new PostgreSQLUserSessionRepository();
       this._services.set('userRepository', userRepository);
       this._services.set('userSessionRepository', userSessionRepository);
 
@@ -143,9 +139,9 @@ export class DIContainer {
 
   async cleanup() {
     try {
-      const dbConnection = this._services.get('dbConnection');
-      if (dbConnection) {
-        await dbConnection.disconnect();
+      const pool = this._services.get('dbPool');
+      if (pool && typeof pool.end === 'function' && !pool.ended) {
+        await pool.end();
       }
       console.log('✅ DI Container cleanup completed');
     } catch (error) {

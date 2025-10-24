@@ -41,7 +41,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
 
       - name: Setup Python
@@ -67,7 +67,6 @@ jobs:
 
       - name: Install dependencies
         run: |
-          cd src
           npm ci --production
           echo "Dependencies installed:"
           npm list --depth=0
@@ -75,7 +74,7 @@ jobs:
       - name: Validate SAM template
         run: |
           echo "Validating template.yml..."
-          sam validate --lint -t template.yml
+          sam validate -t template.yml
 
       - name: Build SAM application
         run: |
@@ -87,9 +86,8 @@ jobs:
 
       - name: Run tests (if available)
         run: |
-          if [ -f "src/package.json" ] && grep -q '"test"' src/package.json; then
+          if [ -f "package.json" ] && grep -q '"test"' package.json; then
             echo "Running tests..."
-            cd src
             npm test || echo "Tests failed, but continuing deployment"
           else
             echo "No tests found, skipping test step"
@@ -97,15 +95,21 @@ jobs:
 
       - name: Deploy to AWS
         env:
-          DATABASE_URL_DEV: ${{ secrets.DATABASE_URL_DEV }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          JWT_SECRET: ${{ secrets.JWT_SECRET }}
           DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
           DATABASE_URL_PROD: ${{ secrets.DATABASE_URL_PROD }}
-          JWT_SECRET_DEV: ${{ secrets.JWT_SECRET_DEV }}
           JWT_SECRET_STAGING: ${{ secrets.JWT_SECRET_STAGING }}
           JWT_SECRET_PROD: ${{ secrets.JWT_SECRET_PROD }}
           CORS_ORIGIN_DEV: ${{ secrets.CORS_ORIGIN_DEV || '*' }}
           CORS_ORIGIN_STAGING: ${{ secrets.CORS_ORIGIN_STAGING || '*' }}
           CORS_ORIGIN_PROD: ${{ secrets.CORS_ORIGIN_PROD }}
+          VPC_SUBNET_IDS_DEV: ${{ secrets.VPC_SUBNET_IDS_DEV }}
+          VPC_SG_IDS_DEV: ${{ secrets.VPC_SG_IDS_DEV }}
+          VPC_SUBNET_IDS_STAGING: ${{ secrets.VPC_SUBNET_IDS_STAGING }}
+          VPC_SG_IDS_STAGING: ${{ secrets.VPC_SG_IDS_STAGING }}
+          VPC_SUBNET_IDS_PROD: ${{ secrets.VPC_SUBNET_IDS_PROD }}
+          VPC_SG_IDS_PROD: ${{ secrets.VPC_SG_IDS_PROD }}
         run: |
           ENV="${{ github.event.inputs.environment || 'dev' }}"
           STACK_NAME="learnia-user-management-${ENV}"
@@ -116,37 +120,53 @@ jobs:
           # Seleccionar variables según el ambiente
           case ${ENV} in
             "dev")
-              DATABASE_URL="${DATABASE_URL_DEV}"
-              JWT_SECRET="${JWT_SECRET_DEV}"
+              DATABASE_URL_FINAL="${DATABASE_URL}"
+              JWT_SECRET_FINAL="${JWT_SECRET}"
               CORS_ORIGIN="${CORS_ORIGIN_DEV:-*}"
+              VPC_SUBNET_IDS="${VPC_SUBNET_IDS_DEV}"
+              VPC_SG_IDS="${VPC_SG_IDS_DEV}"
               ;;
             "staging")
-              DATABASE_URL="${DATABASE_URL_STAGING}"
-              JWT_SECRET="${JWT_SECRET_STAGING}"
+              DATABASE_URL_FINAL="${DATABASE_URL_STAGING}"
+              JWT_SECRET_FINAL="${JWT_SECRET_STAGING}"
               CORS_ORIGIN="${CORS_ORIGIN_STAGING:-*}"
+              VPC_SUBNET_IDS="${VPC_SUBNET_IDS_STAGING}"
+              VPC_SG_IDS="${VPC_SG_IDS_STAGING}"
               ;;
             "prod")
-              DATABASE_URL="${DATABASE_URL_PROD}"
-              JWT_SECRET="${JWT_SECRET_PROD}"
+              DATABASE_URL_FINAL="${DATABASE_URL_PROD}"
+              JWT_SECRET_FINAL="${JWT_SECRET_PROD}"
               CORS_ORIGIN="${CORS_ORIGIN_PROD}"
+              VPC_SUBNET_IDS="${VPC_SUBNET_IDS_PROD}"
+              VPC_SG_IDS="${VPC_SG_IDS_PROD}"
               ;;
           esac
           
           # Verificar que las variables críticas estén definidas
-          if [ -z "${DATABASE_URL}" ]; then
-            echo "ERROR: DATABASE_URL_${ENV} is not set in secrets"
+          if [ -z "${DATABASE_URL_FINAL}" ]; then
+            echo "ERROR: DATABASE_URL for ${ENV} is not set in secrets"
             exit 1
           fi
           
-          if [ -z "${JWT_SECRET}" ]; then
-            echo "ERROR: JWT_SECRET_${ENV} is not set in secrets"
+          if [ -z "${JWT_SECRET_FINAL}" ]; then
+            echo "ERROR: JWT_SECRET for ${ENV} is not set in secrets"
             exit 1
           fi
-          
+
+          if [ -z "${VPC_SUBNET_IDS}" ]; then
+            echo "ERROR: VPC_SUBNET_IDS for ${ENV} is not set in secrets"
+            exit 1
+          fi
+
+          if [ -z "${VPC_SG_IDS}" ]; then
+            echo "ERROR: VPC_SG_IDS for ${ENV} is not set in secrets"
+            exit 1
+          fi
+
           echo "Deploying with parameters:"
           echo "  Environment: ${ENV}"
-          echo "  Database URL: ${DATABASE_URL:0:30}... (truncated)"
-          echo "  JWT Secret: ${JWT_SECRET:0:10}... (truncated)"
+          echo "  Database URL: ${DATABASE_URL_FINAL:0:30}... (truncated)"
+          echo "  JWT Secret: ${JWT_SECRET_FINAL:0:10}... (truncated)"
           echo "  CORS Origin: ${CORS_ORIGIN}"
           
           sam deploy \
@@ -158,9 +178,11 @@ jobs:
             --capabilities CAPABILITY_IAM \
             --parameter-overrides \
               Environment="${ENV}" \
-              DatabaseUrl="${DATABASE_URL}" \
-              JWTSecret="${JWT_SECRET}" \
-              CorsOrigin="${CORS_ORIGIN}"
+              DatabaseUrl="${DATABASE_URL_FINAL}" \
+              JWTSecret="${JWT_SECRET_FINAL}" \
+              CorsOrigin="${CORS_ORIGIN}" \
+              VpcSubnetIds="${VPC_SUBNET_IDS}" \
+              VpcSecurityGroupIds="${VPC_SG_IDS}"
 
       - name: Get deployment outputs
         id: outputs

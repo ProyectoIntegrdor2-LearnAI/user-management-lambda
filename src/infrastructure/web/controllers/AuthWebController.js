@@ -19,13 +19,16 @@ export class AuthWebController {
    */
   async register(req, res, next) {
     try {
-      const { name, email, password, phone, type_user } = req.body;
-      
+      const body = req.validated?.body ?? req.body;
+      const { name, email, password, identification, phone, address, type_user } = body;
+
       const result = await this.registerUserUseCase.execute({
         name,
         email,
         password,
+        identification,
         phone: phone || null,
+        address: address || null,
         type_user: type_user || 'user'
       });
 

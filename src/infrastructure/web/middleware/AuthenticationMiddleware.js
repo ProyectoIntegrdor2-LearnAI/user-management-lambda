@@ -15,8 +15,8 @@ export class AuthenticationMiddleware {
   requireAuth() {
     return async (req, res, next) => {
       try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+        const token = req.headers.authorization?.split(' ')[1];
+
         
         if (!token) {
           return res.status(401).json({
@@ -34,7 +34,7 @@ export class AuthenticationMiddleware {
         // Verificar sesión activa
         const session = await this.userSessionRepository.findActiveByTokenHash(tokenHash);
         
-        if (!session || !session.isActive()) {
+        if (!session?.isActive()) {
           return res.status(401).json({
             success: false,
             message: 'Sesión inválida o expirada'
@@ -66,8 +66,7 @@ export class AuthenticationMiddleware {
   optionalAuth() {
     return async (req, res, next) => {
       try {
-        const authHeader = req.headers.authorization;
-        const token = authHeader && authHeader.split(' ')[1];
+        const token = req.headers.authorization?.split(' ')[1];
         
         if (!token) {
           req.user = null;
@@ -79,7 +78,7 @@ export class AuthenticationMiddleware {
         const tokenHash = await this.tokenService.hash(token);
         const session = await this.userSessionRepository.findActiveByTokenHash(tokenHash);
         
-        if (session && session.isActive()) {
+        if (session?.isActive()) {
           req.user = {
             user_id: decoded.user_id,
             email: decoded.email,
@@ -95,6 +94,7 @@ export class AuthenticationMiddleware {
         next();
         
       } catch (error) {
+        console.warn('Optional auth token error:', error.message);
         // Si hay error con el token opcional, continuar sin usuario
         req.user = null;
         next();

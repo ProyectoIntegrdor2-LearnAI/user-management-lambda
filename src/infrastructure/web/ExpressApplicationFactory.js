@@ -5,7 +5,13 @@
 
 import express from 'express';
 import cors from 'cors';
-import { createAuthRoutes, createUserRoutes } from './web/routes/index.js';
+import {
+  buildCorsHeaders,
+  createCorsOptions,
+  getAllowedOrigins,
+  normalizeOrigin
+} from './cors/corsConfig.js';
+import { createAuthRoutes, createUserRoutes } from './routes/index.js';
 
 export class ExpressApplicationFactory {
   constructor(diContainer) {
@@ -31,12 +37,47 @@ export class ExpressApplicationFactory {
   }
 
   _configureBasicMiddleware(app) {
-    // CORS configuration
-    app.use(cors({
-      origin: process.env.CORS_ORIGIN?.split(',') || ['*'],
-      credentials: true,
-      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
-    }));
+  const isLambdaEnv = Boolean(process.env.AWS_LAMBDA_FUNCTION_NAME);
+  const enableInternalCors = process.env.ENABLE_INTERNAL_CORS !== 'false' && !isLambdaEnv;
+
+  // ✅ Use `.find()` instead of `.filter()` since only the first non-* origin is needed
+  const firstAllowedOrigin = getAllowedOrigins().find(origin => origin !== '*');
+
+  const fallbackOriginCandidate =
+    process.env.DEFAULT_ALLOW_ORIGIN || firstAllowedOrigin || 'https://www.learn-ia.app';
+
+  const fallbackOrigin = normalizeOrigin(fallbackOriginCandidate);
+
+  const applyCorsHeaders = (req, res) => {
+    const requestOrigin = req.headers.origin || req.headers.Origin;
+    const corsHeaders = buildCorsHeaders(requestOrigin) || buildCorsHeaders(fallbackOrigin);
+    if (!corsHeaders) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(corsHeaders)) {
+      if (value !== undefined) {
+        res.setHeader(key, value);
+      }
+    }
+  };
+
+    app.use((req, res, next) => {
+      applyCorsHeaders(req, res);
+
+      if (!enableInternalCors && req.method === 'OPTIONS') {
+        res.status(204).end();
+        return;
+      }
+
+      next();
+    });
+
+    if (enableInternalCors) {
+      const corsOptions = createCorsOptions();
+      app.use(cors(corsOptions));
+      app.options('*', cors(corsOptions));
+    }
 
     // JSON parsing
     app.use(express.json({ limit: '10mb' }));
@@ -53,23 +94,34 @@ export class ExpressApplicationFactory {
     // Health check endpoint
     app.get('/health', async (req, res) => {
       const healthcheck = {
-        uptime: process.uptime(),
-        message: 'OK',
+        service: 'learnia-user-management',
         timestamp: new Date().toISOString(),
-        environment: process.env.NODE_ENV || 'development'
+        environment: process.env.NODE_ENV || 'development',
+        uptimeSeconds: Math.round(process.uptime()),
+        database: {
+          status: 'unknown'
+        }
       };
 
       try {
-        // Check database connection
-        const dbConnection = this.diContainer.get('dbConnection');
-        await dbConnection.query('SELECT 1');
-        healthcheck.database = 'connected';
+        const dbPool = this.diContainer.get('dbPool');
+        const start = Date.now();
+        await dbPool.query('SELECT 1');
+
+        healthcheck.database = {
+          status: 'ok',
+          latencyMs: Date.now() - start
+        };
       } catch (error) {
-        healthcheck.database = 'disconnected';
-        healthcheck.message = 'Degraded';
+        console.error('Database health endpoint error:', error);
+        healthcheck.database = {
+          status: 'error',
+          code: error?.code,
+          message: error?.message
+        };
       }
 
-      const statusCode = healthcheck.message === 'OK' ? 200 : 503;
+      const statusCode = healthcheck.database.status === 'ok' ? 200 : 503;
       res.status(statusCode).json(healthcheck);
     });
 

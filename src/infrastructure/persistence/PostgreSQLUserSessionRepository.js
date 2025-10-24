@@ -29,6 +29,52 @@ export class PostgreSQLUserSessionRepository extends UserSessionRepository {
     }
   }
 
+  async findActiveByTokenHash(jwt_token_hash) {
+    try {
+      const query = `
+        SELECT session_id, user_id, jwt_token_hash, created_at, expires_at, is_active
+        FROM user_sessions 
+        WHERE jwt_token_hash = $1 
+          AND is_active = true 
+          AND expires_at > NOW()
+        LIMIT 1
+      `;
+      const result = await pool.query(query, [jwt_token_hash]);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      return new UserSession(result.rows[0]);
+    } catch (error) {
+      console.error('Error finding active session by token hash:', error);
+      throw error;
+    }
+  }
+
+  async findByUserIdAndTokenHash(user_id, jwt_token_hash) {
+    try {
+      const query = `
+        SELECT session_id, user_id, jwt_token_hash, created_at, expires_at, is_active
+        FROM user_sessions 
+        WHERE user_id = $1 
+          AND jwt_token_hash = $2
+        ORDER BY created_at DESC
+        LIMIT 1
+      `;
+      const result = await pool.query(query, [user_id, jwt_token_hash]);
+
+      if (result.rows.length === 0) {
+        return null;
+      }
+
+      return new UserSession(result.rows[0]);
+    } catch (error) {
+      console.error('Error finding session by user id and token hash:', error);
+      throw error;
+    }
+  }
+
   async findActiveSessionsByUserId(user_id) {
     try {
       const query = `
@@ -189,7 +235,7 @@ export class PostgreSQLUserSessionRepository extends UserSessionRepository {
         WHERE user_id = $1 AND is_active = true AND expires_at > NOW()
       `;
       const result = await pool.query(query, [user_id]);
-      return parseInt(result.rows[0].count);
+      return Number.parseInt(result.rows[0].count);
     } catch (error) {
       console.error('Error counting active sessions:', error);
       throw error;

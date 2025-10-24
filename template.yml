@@ -1,0 +1,224 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: LearnIA User Management Lambda MVP
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+  DatabaseUrl:
+    Type: String
+    NoEcho: true
+  JWTSecret:
+    Type: String
+    NoEcho: true
+  CorsOrigin:
+    Type: String
+    Default: "*"
+  VpcSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: Subnets privados donde correrá la Lambda
+  VpcSecurityGroupIds:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+    Description: Security Groups para acceso a la base de datos
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    MemorySize: 512
+    Architectures:
+      - x86_64
+    CodeUri: .
+    Handler: src/app.handler
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        DATABASE_URL: !Ref DatabaseUrl
+        JWT_SECRET: !Ref JWTSecret
+        JWT_EXPIRES_IN: "24h"
+        BCRYPT_ROUNDS: "12"
+        CORS_ORIGIN: !Ref CorsOrigin
+        DB_SSL: "true"
+        # Ruta del bundle CA montado desde el Layer en /opt/certs/
+        DB_CA_PATH: /opt/certs/rds-us-east-2-bundle.pem
+  Api:
+    Cors:
+      AllowMethods: "'OPTIONS,GET,POST,PUT,DELETE'"
+      AllowHeaders: "'Content-Type,Authorization,X-Requested-With,Accept,Origin,X-Amz-Date,X-Amz-Security-Token,X-Amz-User-Agent'"
+      AllowOrigin: !Sub "'${CorsOrigin}'"
+      AllowCredentials: true
+
+Resources:
+  RdsCaLayer:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: learnia-rds-ca
+      Description: RDS/DB CA bundle for SSL verification
+      ContentUri: layer-certs/ # carpeta que contiene "certs/<tu-archivo>.pem"
+      CompatibleRuntimes:
+        - nodejs20.x
+      LicenseInfo: MIT
+
+  UserManagementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub learnia-user-management-${Environment}
+      Description: User Management MVP
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - AWSLambdaVPCAccessExecutionRole
+      Layers:
+        - !Ref RdsCaLayer
+      VpcConfig:
+        SubnetIds: !Ref VpcSubnetIds
+        SecurityGroupIds: !Ref VpcSecurityGroupIds
+      Events:
+        AuthRegister:
+          Type: Api
+          Properties:
+            Path: /auth/register
+            Method: POST
+        AuthLogin:
+          Type: Api
+          Properties:
+            Path: /auth/login
+            Method: POST
+        AuthLogout:
+          Type: Api
+          Properties:
+            Path: /auth/logout
+            Method: POST
+        AuthRegisterApi:
+          Type: Api
+          Properties:
+            Path: /api/auth/register
+            Method: POST
+        AuthLoginApi:
+          Type: Api
+          Properties:
+            Path: /api/auth/login
+            Method: POST
+        AuthLogoutApi:
+          Type: Api
+          Properties:
+            Path: /api/auth/logout
+            Method: POST
+        UsersGetById:
+          Type: Api
+          Properties:
+            Path: /users/{id}
+            Method: GET
+        UsersUpdateById:
+          Type: Api
+          Properties:
+            Path: /users/{id}/profile
+            Method: PUT
+        UsersDashboardById:
+          Type: Api
+          Properties:
+            Path: /users/{id}/dashboard
+            Method: GET
+        UsersProgressGetById:
+          Type: Api
+          Properties:
+            Path: /users/{id}/progress
+            Method: GET
+        UsersProgressUpdateById:
+          Type: Api
+          Properties:
+            Path: /users/{id}/progress
+            Method: POST
+        UsersGetMe:
+          Type: Api
+          Properties:
+            Path: /users/me
+            Method: GET
+        UsersUpdateMe:
+          Type: Api
+          Properties:
+            Path: /users/me/profile
+            Method: PUT
+        UsersDashboardMe:
+          Type: Api
+          Properties:
+            Path: /users/me/dashboard
+            Method: GET
+        UsersProgressGetMe:
+          Type: Api
+          Properties:
+            Path: /users/me/progress
+            Method: GET
+        UsersProgressUpdateMe:
+          Type: Api
+          Properties:
+            Path: /users/me/progress
+            Method: POST
+        UsersGetByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}
+            Method: GET
+        UsersUpdateByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/profile
+            Method: PUT
+        UsersDashboardByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/dashboard
+            Method: GET
+        UsersProgressGetByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/progress
+            Method: GET
+        UsersProgressUpdateByIdApi:
+          Type: Api
+          Properties:
+            Path: /api/users/{id}/progress
+            Method: POST
+        UsersGetMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me
+            Method: GET
+        UsersUpdateMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/profile
+            Method: PUT
+        UsersDashboardMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/dashboard
+            Method: GET
+        UsersProgressGetMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/progress
+            Method: GET
+        UsersProgressUpdateMeApi:
+          Type: Api
+          Properties:
+            Path: /api/users/me/progress
+            Method: POST
+        Health:
+          Type: Api
+          Properties:
+            Path: /health
+            Method: GET
+        Info:
+          Type: Api
+          Properties:
+            Path: /info
+            Method: GET
+
+Outputs:
+  ApiUrl:
+    Description: API Gateway URL
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+  FunctionArn:
+    Description: Lambda Function ARN
+    Value: !GetAtt UserManagementFunction.Arn

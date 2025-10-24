@@ -66,6 +66,31 @@ export class User {
     this.updated_at = new Date();
   }
 
+  updateName(name) {
+    this.name = name;
+    this.updated_at = new Date();
+  }
+
+  updateEmail(email) {
+    this.email = email;
+    this.updated_at = new Date();
+  }
+
+  updatePhone(phone) {
+    this.phone = phone;
+    this.updated_at = new Date();
+  }
+
+  updateAddress(address) {
+    this.address = address;
+    this.updated_at = new Date();
+  }
+
+  updatePasswordHash(passwordHash) {
+    this.password_hash = passwordHash;
+    this.updated_at = new Date();
+  }
+
   updateLastLogin() {
     this.updated_at = new Date();
   }

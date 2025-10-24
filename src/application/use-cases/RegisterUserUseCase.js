@@ -4,6 +4,7 @@
  */
 
 import { User } from '../../domain/entities/User.js';
+import { ValidationError } from '../../shared/errors/ValidationError.js';
 
 export class RegisterUserUseCase {
   constructor(userRepository, passwordService) {
@@ -11,24 +12,25 @@ export class RegisterUserUseCase {
     this.passwordService = passwordService;
   }
 
-  async execute({ identification, name, email, phone, password, address }) {
-    // Validaciones de negocio
-    if (!identification || !name || !email || !password) {
-      throw new Error('MISSING_REQUIRED_FIELDS', {
-        message: 'Campos obligatorios: identification, name, email, password'
-      });
+  async execute({ identification, name, email, phone = null, password, address = null, type_user }) {
+    const missing = [];
+    const invalid = [];
+
+    if (!identification) missing.push('identification');
+    if (!name) missing.push('name');
+    if (!email) missing.push('email');
+    if (!password) missing.push('password');
+
+    if (password && password.length < 8) {
+      invalid.push({ field: 'password', rule: 'minLength', message: 'La contraseña debe tener al menos 8 caracteres' });
     }
 
-    if (!User.validateEmail(email)) {
-      throw new Error('INVALID_EMAIL', {
-        message: 'El formato del email es inválido'
-      });
+    if (!User.validateEmail(email ?? '')) {
+      invalid.push({ field: 'email', rule: 'format', message: 'El formato del email es inválido' });
     }
 
-    if (!User.validatePassword(password)) {
-      throw new Error('INVALID_PASSWORD', {
-        message: 'La contraseña debe tener al menos 8 caracteres'
-      });
+    if (missing.length || invalid.length) {
+      throw new ValidationError('REGISTRATION_VALIDATION_FAILED', { missing, invalid });
     }
 
     // Verificar unicidad
@@ -54,10 +56,10 @@ export class RegisterUserUseCase {
       identification,
       name,
       email,
-      phone,
-      address,
+  phone,
+  address,
       password_hash: passwordHash,
-      type_user: 'student'
+      type_user: type_user || 'student'
     });
 
     // Persistir usuario
